@@ -1,0 +1,39 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+out/
+src-tauri/target/
+*.tgz
+
+# code coverage
+coverage/
+*.lcov
+
+# logs
+logs/
+*.log
+
+# dotenv
+.env
+.env.*.local
+
+# caches
+.cache/
+*.tsbuildinfo
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# tool state (not project files)
+.gstack/
+.omc/
+.claude/
+
+wiki/

@@ -1,0 +1,16 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/tauri/v2/core/tauri-config-schema/schema.json",
+  "identifier": "default",
+  "description": "Default capabilities for streambreak",
+  "windows": ["popup"],
+  "permissions": [
+    "core:default",
+    "core:window:default",
+    "core:window:allow-create",
+    "core:window:allow-show",
+    "core:window:allow-hide",
+    "core:window:allow-close",
+    "core:window:allow-set-focus",
+    "shell:allow-open"
+  ]
+}
