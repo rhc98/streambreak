@@ -23,14 +23,14 @@ function checkWin(board: Board, r: number, c: number, player: Player): boolean {
     for (let d = 1; d < WIN; d++) {
       const nr = r + dr! * d
       const nc = c + dc! * d
-      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr]![nc] === player) {
+      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr]?.[nc] === player) {
         count++
       } else break
     }
     for (let d = 1; d < WIN; d++) {
       const nr = r - dr! * d
       const nc = c - dc! * d
-      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr]![nc] === player) {
+      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr]?.[nc] === player) {
         count++
       } else break
     }
@@ -42,7 +42,7 @@ function checkWin(board: Board, r: number, c: number, player: Player): boolean {
 function isFull(board: Board): boolean {
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
-      if (board[r]![c] === 0) return false
+      if (board[r]?.[c] === 0) return false
     }
   }
   return true
@@ -70,8 +70,8 @@ function evaluateLine(
       blocked = true
       break
     }
-    if (board[nr]![nc] === player) count++
-    else if (board[nr]![nc] === opp) {
+    if (board[nr]?.[nc] === player) count++
+    else if (board[nr]?.[nc] === opp) {
       blocked = true
       break
     } else {
@@ -89,8 +89,8 @@ function evaluateLine(
       blockedBack = true
       break
     }
-    if (board[nr]![nc] === player) count++
-    else if (board[nr]![nc] === opp) {
+    if (board[nr]?.[nc] === player) count++
+    else if (board[nr]?.[nc] === opp) {
       blockedBack = true
       break
     } else {
@@ -135,7 +135,7 @@ function aiMove(board: Board): [number, number] | null {
 
   for (let r = 0; r < SIZE; r++) {
     for (let c = 0; c < SIZE; c++) {
-      if (board[r]![c] !== 0) continue
+      if (board[r]?.[c] !== 0) continue
 
       // Check if near existing stones (optimization)
       let near = false
@@ -143,7 +143,7 @@ function aiMove(board: Board): [number, number] | null {
         for (let dc = -2; dc <= 2 && !near; dc++) {
           const nr = r + dr
           const nc = c + dc
-          if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr]![nc] !== 0) {
+          if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && board[nr]?.[nc] !== 0) {
             near = true
           }
         }
@@ -180,7 +180,7 @@ export default function Gomoku() {
   const handleClick = useCallback(
     (r: number, c: number) => {
       if (result || thinking) return
-      if (board[r]![c] !== 0) return
+      if (board[r]?.[c] !== 0) return
 
       const newBoard = board.map(row => [...row]) as Board
       newBoard[r]![c] = 1
@@ -282,7 +282,7 @@ export default function Gomoku() {
           {Array.from({ length: SIZE * SIZE }, (_, i) => {
             const r = Math.floor(i / SIZE)
             const c = i % SIZE
-            const stone = board[r]![c]
+            const stone = board[r]?.[c]
             const isLast = lastMove?.[0] === r && lastMove?.[1] === c
 
             return (

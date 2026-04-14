@@ -29,7 +29,7 @@ function createBoard(firstR?: number, firstC?: number): CellState[][] {
   while (placed < MINES) {
     const r = Math.floor(Math.random() * ROWS)
     const c = Math.floor(Math.random() * COLS)
-    if (board[r]![c]!.mine) continue
+    if (board[r]?.[c]?.mine) continue
     if (firstR !== undefined && Math.abs(r - firstR) <= 1 && Math.abs(c - firstC!) <= 1) continue
     board[r]![c]!.mine = true
     placed++
@@ -38,13 +38,13 @@ function createBoard(firstR?: number, firstC?: number): CellState[][] {
   // Calculate adjacents
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      if (board[r]![c]!.mine) continue
+      if (board[r]?.[c]?.mine) continue
       let count = 0
       for (let dr = -1; dr <= 1; dr++) {
         for (let dc = -1; dc <= 1; dc++) {
           const nr = r + dr
           const nc = c + dc
-          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr]![nc]!.mine) {
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && board[nr]?.[nc]?.mine) {
             count++
           }
         }
@@ -62,7 +62,7 @@ function reveal(board: CellState[][], r: number, c: number): CellState[][] {
 
   while (stack.length > 0) {
     const [cr, cc] = stack.pop()!
-    const cell = newBoard[cr]![cc]!
+    const cell = newBoard[cr]?.[cc]!
     if (cell.revealed || cell.flagged) continue
     cell.revealed = true
 
@@ -71,7 +71,7 @@ function reveal(board: CellState[][], r: number, c: number): CellState[][] {
         for (let dc = -1; dc <= 1; dc++) {
           const nr = cr + dr
           const nc = cc + dc
-          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !newBoard[nr]![nc]!.revealed) {
+          if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS && !newBoard[nr]?.[nc]?.revealed) {
             stack.push([nr, nc])
           }
         }
@@ -85,7 +85,7 @@ function reveal(board: CellState[][], r: number, c: number): CellState[][] {
 function checkWin(board: CellState[][]): boolean {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = board[r]![c]!
+      const cell = board[r]?.[c]!
       if (!cell.mine && !cell.revealed) return false
     }
   }
@@ -112,7 +112,7 @@ export default function Minesweeper() {
   const handleClick = useCallback(
     (r: number, c: number) => {
       if (gameState !== 'playing') return
-      const cell = board[r]![c]!
+      const cell = board[r]?.[c]!
       if (cell.revealed || cell.flagged) return
 
       let currentBoard = board
@@ -121,7 +121,7 @@ export default function Minesweeper() {
         setFirstClick(false)
       }
 
-      if (currentBoard[r]![c]!.mine) {
+      if (currentBoard[r]?.[c]?.mine) {
         // Reveal all mines
         const lost = currentBoard.map(row =>
           row.map(cell => (cell.mine ? { ...cell, revealed: true } : { ...cell })),
@@ -144,11 +144,11 @@ export default function Minesweeper() {
     (e: React.MouseEvent, r: number, c: number) => {
       e.preventDefault()
       if (gameState !== 'playing') return
-      const cell = board[r]![c]!
+      const cell = board[r]?.[c]!
       if (cell.revealed) return
 
       const newBoard = board.map(row => row.map(cell => ({ ...cell })))
-      const target = newBoard[r]![c]!
+      const target = newBoard[r]?.[c]!
       target.flagged = !target.flagged
       setBoard(newBoard)
       setFlagCount(prev => prev + (target.flagged ? 1 : -1))

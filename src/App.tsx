@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import CompleteBanner from './components/CompleteBanner'
 import Controls from './components/Controls'
 import MiniGame from './components/MiniGame'

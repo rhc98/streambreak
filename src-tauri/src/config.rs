@@ -67,7 +67,7 @@ pub struct FeedSource {
 // Default value functions
 fn default_general() -> GeneralConfig {
     GeneralConfig {
-        threshold_seconds: 30,
+        threshold_seconds: 10,
         auto_hide_on_complete: true,
         fade_out_delay_ms: 3000,
         language: "en".into(),
@@ -125,7 +125,7 @@ fn default_feeds_ko() -> Vec<FeedSource> {
     }]
 }
 
-fn default_threshold() -> u64 { 30 }
+fn default_threshold() -> u64 { 10 }
 fn default_true() -> bool { true }
 fn default_fade_out() -> u64 { 3000 }
 fn default_language() -> String { "en".into() }
@@ -194,7 +194,7 @@ mod tests {
     #[test]
     fn test_default_config() {
         let c = Config::default();
-        assert_eq!(c.general.threshold_seconds, 30);
+        assert_eq!(c.general.threshold_seconds, 10);
         assert_eq!(c.general.language, "en");
         assert_eq!(c.popup.width, 400);
         assert_eq!(c.popup.height, 500);

@@ -13,13 +13,13 @@ const GAMES = [
 type GameId = (typeof GAMES)[number]['id']
 
 function randomGame(): GameId {
-  return GAMES[Math.floor(Math.random() * GAMES.length)]!.id
+  return GAMES[Math.floor(Math.random() * GAMES.length)]?.id
 }
 
 export default function MiniGame() {
   const [activeGame, setActiveGame] = useState<GameId>(randomGame)
 
-  const ActiveComponent = GAMES.find(g => g.id === activeGame)!.component
+  const ActiveComponent = GAMES.find(g => g.id === activeGame)?.component
 
   return (
     <div className="flex h-full flex-col">
