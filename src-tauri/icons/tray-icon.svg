@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 22 22">
+  <!-- Left bar -->
+  <rect x="3" y="3" width="4.5" height="16" rx="1.5" fill="#e0e0e0"/>
+  <!-- Right bar -->
+  <rect x="14.5" y="3" width="4.5" height="16" rx="1.5" fill="#e0e0e0"/>
+  <!-- Content lines (centered in gap) -->
+  <rect x="9" y="8" width="4" height="1.5" rx="0.75" fill="#e0e0e0" opacity="0.9"/>
+  <rect x="9.5" y="11" width="3" height="1.5" rx="0.75" fill="#e0e0e0" opacity="0.65"/>
+  <rect x="9.9" y="14" width="2.2" height="1.5" rx="0.75" fill="#e0e0e0" opacity="0.4"/>
+</svg>

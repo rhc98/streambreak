@@ -28,34 +28,54 @@ fn register_hooks() -> Result<(), Box<dyn std::error::Error>> {
         serde_json::json!({})
     };
 
-    let hooks = serde_json::json!({
-        "PreToolUse": [{
+    let streambreak_hooks = vec![
+        ("PreToolUse", serde_json::json!({
             "matcher": "",
             "hooks": [{
                 "type": "command",
                 "command": "streambreak timer start",
                 "timeout": 3
             }]
-        }],
-        "Notification": [{
+        })),
+        ("Notification", serde_json::json!({
             "matcher": "idle_prompt|permission_prompt",
             "hooks": [{
                 "type": "command",
                 "command": "streambreak show --reason=idle",
                 "timeout": 3
             }]
-        }],
-        "Stop": [{
+        })),
+        ("Stop", serde_json::json!({
             "matcher": "",
             "hooks": [{
                 "type": "command",
                 "command": "streambreak hide --reason=complete",
                 "timeout": 3
             }]
-        }]
-    });
+        })),
+    ];
 
-    settings["hooks"] = hooks;
+    if settings.get("hooks").is_none() {
+        settings["hooks"] = serde_json::json!({});
+    }
+    let hooks_obj = settings["hooks"].as_object_mut().unwrap();
+
+    for (event, hook_entry) in streambreak_hooks {
+        // Remove any existing streambreak hooks for this event
+        if let Some(arr) = hooks_obj.get_mut(event).and_then(|v| v.as_array_mut()) {
+            arr.retain(|entry| {
+                !entry["hooks"]
+                    .as_array()
+                    .map(|h| h.iter().any(|cmd| {
+                        cmd["command"].as_str().map_or(false, |c| c.starts_with("streambreak"))
+                    }))
+                    .unwrap_or(false)
+            });
+            arr.push(hook_entry);
+        } else {
+            hooks_obj.insert(event.to_string(), serde_json::json!([hook_entry]));
+        }
+    }
 
     if let Some(parent) = settings_path.parent() {
         std::fs::create_dir_all(parent)?;
