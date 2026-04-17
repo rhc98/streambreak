@@ -1,4 +1,5 @@
 use crate::AppState;
+use tauri::Manager;
 use axum::{
     extract::{Query, State as AxumState},
     response::Json,
@@ -37,7 +38,17 @@ type SharedState = Arc<(Arc<AppState>, tauri::AppHandle)>;
 
 async fn timer_start(AxumState(shared): AxumState<SharedState>) -> Json<serde_json::Value> {
     let mut timer = shared.0.timer.lock().await;
-    timer.start();
+    let should_show = timer.check_threshold();
+    if should_show {
+        timer.show();
+        drop(timer);
+        if let Err(e) = crate::window::show_or_create(&shared.1) {
+            tracing::error!("Failed to show popup: {e}");
+        }
+    } else {
+        timer.start();
+        drop(timer);
+    }
     Json(serde_json::json!({ "ok": true }))
 }
 
@@ -64,28 +75,37 @@ async fn hide_popup(
     Query(q): Query<ReasonQuery>,
 ) -> Json<serde_json::Value> {
     let mut timer = shared.0.timer.lock().await;
-
-    let is_complete = q.reason.as_deref() == Some("complete");
-    if is_complete {
-        // Keep showing for fade-out, then hide
-        timer.hide();
-    } else {
-        timer.hide();
-    }
+    timer.hide();
     drop(timer);
 
+    let is_complete = q.reason.as_deref() == Some("complete");
+    let handle = shared.1.clone();
+
     if is_complete {
-        // Let frontend show complete banner, then hide after delay
-        let handle = shared.1.clone();
         let config = shared.0.config.lock().await;
         let delay = config.general.fade_out_delay_ms;
         drop(config);
+
         tokio::spawn(async move {
+            // If user is focused on the popup (e.g. playing a game), wait until they stop
+            if let Some(win) = handle.get_webview_window("popup") {
+                let max_wait = std::time::Duration::from_secs(600);
+                let poll_interval = std::time::Duration::from_millis(500);
+                let started = std::time::Instant::now();
+
+                while started.elapsed() < max_wait {
+                    match win.is_focused() {
+                        Ok(true) => tokio::time::sleep(poll_interval).await,
+                        _ => break,
+                    }
+                }
+            }
+
             tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
             let _ = crate::window::hide(&handle);
         });
     } else {
-        let _ = crate::window::hide(&shared.1);
+        let _ = crate::window::hide(&handle);
     }
 
     Json(serde_json::json!({ "ok": true }))
