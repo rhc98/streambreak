@@ -62,7 +62,7 @@ function reveal(board: CellState[][], r: number, c: number): CellState[][] {
 
   while (stack.length > 0) {
     const [cr, cc] = stack.pop()!
-    const cell = newBoard[cr]?.[cc]!
+    const cell = newBoard[cr]![cc]!
     if (cell.revealed || cell.flagged) continue
     cell.revealed = true
 
@@ -85,7 +85,7 @@ function reveal(board: CellState[][], r: number, c: number): CellState[][] {
 function checkWin(board: CellState[][]): boolean {
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const cell = board[r]?.[c]!
+      const cell = board[r]![c]!
       if (!cell.mine && !cell.revealed) return false
     }
   }
@@ -112,7 +112,7 @@ export default function Minesweeper() {
   const handleClick = useCallback(
     (r: number, c: number) => {
       if (gameState !== 'playing') return
-      const cell = board[r]?.[c]!
+      const cell = board[r]![c]!
       if (cell.revealed || cell.flagged) return
 
       let currentBoard = board
@@ -144,11 +144,11 @@ export default function Minesweeper() {
     (e: React.MouseEvent, r: number, c: number) => {
       e.preventDefault()
       if (gameState !== 'playing') return
-      const cell = board[r]?.[c]!
+      const cell = board[r]![c]!
       if (cell.revealed) return
 
       const newBoard = board.map(row => row.map(cell => ({ ...cell })))
-      const target = newBoard[r]?.[c]!
+      const target = newBoard[r]![c]!
       target.flagged = !target.flagged
       setBoard(newBoard)
       setFlagCount(prev => prev + (target.flagged ? 1 : -1))
