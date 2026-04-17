@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
+      tar_sha256: ${{ steps.sha256.outputs.tar_sha256 }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install JS dependencies
+        run: bun install
+
+      - name: Build universal binary
+        run: bun run tauri build -- --target universal-apple-darwin
+
+      - name: Package tar.gz for Homebrew
+        run: |
+          BINARY="src-tauri/target/universal-apple-darwin/release/streambreak"
+          tar -czf streambreak-universal-apple-darwin.tar.gz \
+            -C "$(dirname "$BINARY")" "$(basename "$BINARY")"
+
+      - name: Calculate SHA256
+        id: sha256
+        run: |
+          SHA=$(shasum -a 256 streambreak-universal-apple-darwin.tar.gz | awk '{print $1}')
+          echo "tar_sha256=$SHA" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: streambreak-tar
+          path: streambreak-universal-apple-darwin.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: streambreak-dmg
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: master
+
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Update Homebrew formula
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          SHA256: ${{ needs.build.outputs.tar_sha256 }}
+        run: |
+          sed -i "s|version \"[^\"]*\"|version \"$VERSION\"|" Formula/streambreak.rb
+          sed -i "s|/download/v[^/]*/|/download/v$VERSION/|" Formula/streambreak.rb
+          sed -i "s|sha256 \"[^\"]*\"|sha256 \"$SHA256\"|" Formula/streambreak.rb
+
+      - name: Commit formula update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/streambreak.rb
+          git commit -m "chore: update formula to v${{ needs.build.outputs.version }}"
+          git push origin master
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ needs.build.outputs.version }}
+          generate_release_notes: true
+          files: |
+            streambreak-universal-apple-darwin.tar.gz
+            *.dmg

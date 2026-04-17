@@ -41,7 +41,25 @@ Claude Code starts thinking
 - **Claude Code hooks** — auto-registers PreToolUse/Notification/Stop hooks
 - **Config** — `~/.streambreak/config.toml` for thresholds, feeds, popup settings
 
-## Quick start
+## Installation
+
+```bash
+brew tap rhc98/streambreak https://github.com/rhc98/streambreak
+brew install rhc98/streambreak/streambreak
+```
+
+> If macOS blocks the binary (Gatekeeper):
+> ```bash
+> xattr -d com.apple.quarantine $(which streambreak)
+> ```
+
+Then register Claude Code hooks:
+
+```bash
+streambreak init
+```
+
+## Development
 
 ```bash
 # Prerequisites: Rust, Bun
