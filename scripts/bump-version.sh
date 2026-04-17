@@ -12,7 +12,12 @@ CARGO_TOML="$REPO_ROOT/src-tauri/Cargo.toml"
 TAURI_CONF="$REPO_ROOT/src-tauri/tauri.conf.json"
 
 # [package] 섹션의 version만 교체 (dependencies는 건드리지 않음)
-sed -i '' '/^\[package\]/,/^\[/{s/^version = "[^"]*"/version = "'"$VERSION"'"/}' "$CARGO_TOML"
+awk -v ver="$VERSION" '
+  /^\[package\]/ { in_pkg=1 }
+  /^\[/ && !/^\[package\]/ { in_pkg=0 }
+  in_pkg && /^version = / { sub(/"[^"]*"/, "\"" ver "\"") }
+  { print }
+' "$CARGO_TOML" > "$CARGO_TOML.tmp" && mv "$CARGO_TOML.tmp" "$CARGO_TOML"
 
 if ! command -v jq &>/dev/null; then
   echo "Error: jq is required. Install with: brew install jq"
