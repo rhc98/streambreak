@@ -67,31 +67,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: master
-
       - uses: actions/download-artifact@v4
         with:
           merge-multiple: true
-
-      - name: Update Homebrew formula
-        env:
-          VERSION: ${{ needs.build.outputs.version }}
-          SHA256: ${{ needs.build.outputs.tar_sha256 }}
-        run: |
-          sed -i "s|version \"[^\"]*\"|version \"$VERSION\"|" Formula/streambreak.rb
-          sed -i "s|/download/v[^/]*/|/download/v$VERSION/|" Formula/streambreak.rb
-          sed -i "s|sha256 \"[^\"]*\"|sha256 \"$SHA256\"|" Formula/streambreak.rb
-
-      - name: Commit formula update
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Formula/streambreak.rb
-          git commit -m "chore: update formula to v${{ needs.build.outputs.version }}"
-          git push origin master
 
       - name: Update homebrew-tap repo
         env:
