@@ -44,8 +44,8 @@ Claude Code starts thinking
 ## Installation
 
 ```bash
-brew tap rhc98/streambreak https://github.com/rhc98/streambreak
-brew install rhc98/streambreak/streambreak
+brew tap rhc98/tap
+brew install streambreak
 ```
 
 > If macOS blocks the binary (Gatekeeper):
