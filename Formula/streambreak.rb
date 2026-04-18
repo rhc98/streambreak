@@ -3,7 +3,7 @@ class Streambreak < Formula
   homepage "https://github.com/rhc98/streambreak"
   version "0.2.0"
   url "https://github.com/rhc98/streambreak/releases/download/v0.2.0/streambreak-universal-apple-darwin.tar.gz"
-  sha256 "8d9196a38428d2398fb309a28474bdd8735edd236b8fd2ed257aabedf75140f3"
+  sha256 "f4b8ce22902cf006097ac5bbd2be7c189a457538c2f9884e20b337f7672db41b"
 
   on_macos do
     # macOS only
