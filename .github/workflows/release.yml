@@ -93,6 +93,49 @@ jobs:
           git commit -m "chore: update formula to v${{ needs.build.outputs.version }}"
           git push origin master
 
+      - name: Update homebrew-tap repo
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+          SHA256: ${{ needs.build.outputs.tar_sha256 }}
+          TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+        run: |
+          git clone https://x-access-token:${TAP_TOKEN}@github.com/rhc98/homebrew-tap.git /tmp/homebrew-tap
+          cat > /tmp/homebrew-tap/Formula/streambreak.rb << 'FORMULA'
+          class Streambreak < Formula
+            desc "Break time content during AI coding waits"
+            homepage "https://github.com/rhc98/streambreak"
+            version "VERSION_PLACEHOLDER"
+            url "https://github.com/rhc98/streambreak/releases/download/vVERSION_PLACEHOLDER/streambreak-universal-apple-darwin.tar.gz"
+            sha256 "SHA256_PLACEHOLDER"
+
+            def install
+              bin.install "streambreak"
+            end
+
+            def caveats
+              <<~EOS
+                If macOS blocks the binary (Gatekeeper), run:
+                  xattr -d com.apple.quarantine #{bin}/streambreak
+
+                Then set up Claude Code hooks:
+                  streambreak init
+              EOS
+            end
+
+            test do
+              system "#{bin}/streambreak", "--version"
+            end
+          end
+          FORMULA
+          sed -i "s/VERSION_PLACEHOLDER/$VERSION/g" /tmp/homebrew-tap/Formula/streambreak.rb
+          sed -i "s/SHA256_PLACEHOLDER/$SHA256/" /tmp/homebrew-tap/Formula/streambreak.rb
+          cd /tmp/homebrew-tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/streambreak.rb
+          git commit -m "chore: update streambreak to v$VERSION"
+          git push
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
