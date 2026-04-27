@@ -2,15 +2,13 @@
 
 **English** | [한국어](README.ko.md)
 
-Break time content during AI coding idle time. A desktop popup that serves news and mini-games while you wait for Claude Code, Cursor, or other AI tools to finish thinking.
+A desktop popup that shows news and mini-games while you wait for AI coding tools to finish.
 
 ## Why
 
-Claude Code recently hid its extended thinking output from the terminal. Previously you could watch the reasoning process stream by in real time — it was something to read while waiting. Now the terminal just shows a progress spinner during inference, leaving you staring at a blank screen for 30 seconds to several minutes.
+AI coding tools can take anywhere from 30 seconds to several minutes to finish a task. Long enough to be bored, short enough that opening a browser is a bad idea.
 
-You could switch to another app, but context-switching mid-flow is costly. You lose track of where you were, and by the time Claude finishes, you've fallen down a browser tab rabbit hole.
-
-**streambreak** fills that gap. It slides in a small popup with tech news or a quick mini-game — just enough to keep you occupied without pulling you out of your coding context. When Claude finishes, the popup fades away and you're right back where you left off.
+**streambreak** slides in a small popup with tech news or a quick mini-game during those waits — just enough to keep your hands busy without breaking your focus. When the AI finishes, it fades out automatically.
 
 ## How it works
 

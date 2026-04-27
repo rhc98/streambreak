@@ -4,14 +4,14 @@ const POPUP_LABEL: &str = "popup";
 
 pub fn show_or_create(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     tracing::info!("show_or_create called");
+    // Always close and recreate. Showing an existing hidden window causes macOS to switch
+    // the user to whatever Space that window was last on. A freshly created window always
+    // lands on the currently active Space.
     if let Some(win) = app.get_webview_window(POPUP_LABEL) {
-        tracing::info!("Found existing popup window, showing...");
-        win.show()?;
-        win.set_focus()?;
-    } else {
-        tracing::info!("No existing popup, creating new...");
-        create_popup(app)?;
+        tracing::info!("Closing existing popup to recreate on active Space");
+        win.close()?;
     }
+    create_popup(app)?;
     Ok(())
 }
 
@@ -57,6 +57,25 @@ fn create_popup(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
         .visible(true)
         .build()?;
 
+    #[cfg(target_os = "macos")]
+    set_move_to_active_space(&win);
+
     tracing::info!("Popup window created successfully: {:?}", win.label());
     Ok(())
+}
+
+// On macOS, newly created windows land on whatever Space the app was first opened on.
+// NSWindowCollectionBehaviorMoveToActiveSpace (1 << 1) makes the window jump to the
+// currently active Space each time it becomes visible, so split-desktop users see it
+// on the right side.
+#[cfg(target_os = "macos")]
+fn set_move_to_active_space(win: &tauri::WebviewWindow) {
+    use objc::runtime::Object;
+    use objc::{msg_send, sel, sel_impl};
+    if let Ok(ptr) = win.ns_window() {
+        unsafe {
+            let ns_window = ptr as *mut Object;
+            let _: () = msg_send![ns_window, setCollectionBehavior: 2u64];
+        }
+    }
 }
