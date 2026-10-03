@@ -41,7 +41,12 @@
   - 발견: 데스크탑 토스트는 플러그인 이름을 앞에 붙인다(`streambreak: streambreak: …`) → 토스트 문구에 `streambreak:` 접두어 넣지 말 것
   - 발견: 엔진이 mod를 로드하면 `mod/streambreak/.claude-plugin/types/`를 생성할 수 있다 → F2에서 gitignore 처리
   - 미해결: 셸 `claude`(2.1.282) OAuth 만료로 V6 헤드리스 스모크 미실행(재로그인 필요)
-- [ ] F2 (P0) Mod 골격 — 정본 `mod/streambreak/`에 직접 생성: `.claude-plugin/plugin.json`(name `streambreak`, `types` 지정), `hooks/hooks.json`, `hooks/register.tsx`, `types/index.d.ts`(`PluginState.streambreak` 계약: phase, tab, 뉴스 인덱스, 게임 상태). 함께 vitest가 `mod/**`를 줍지 않게 `exclude` 설정, biome `includes`에 `mod/**`를 넣을지 결정
+- [x] F2 (P0) Mod 골격 — 정본 `mod/streambreak/`에 직접 생성: `.claude-plugin/plugin.json`(name `streambreak`, `types` 지정), `hooks/hooks.json`, `hooks/register.tsx`, `types/index.d.ts`(`PluginState.streambreak` 계약: phase, tab, 뉴스 인덱스, 게임 상태). 함께 vitest가 `mod/**`를 줍지 않게 `exclude` 설정, biome `includes`에 `mod/**`를 넣을지 결정 (done · verified: validate 통과, `tsc -p mod/streambreak` 0, `bun run check` 에러 0·경고 master와 동일, `bun run test` 12 passed + mod 프로브 미수집, `cargo test` 10 passed, src/src-tauri diff 0)
+  - 계약: `phase`('idle'|'working'|'done'), `turnId`(메인 턴만), `tab`('news'|'games'), `newsIndex`, `game`(GameKind|null). 게임 보드 키는 F8–F10에서 추가
+  - 발견: validate는 `$.state` ref(`atom`)를 **읽고 쓰는 파일 안에 선언**해야 통과한다(다른 파일에서 import한 atom은 거부). → 모든 state 접근은 `hooks/register.tsx`에 두고, 피드 파서·게임 로직·그리기는 값과 콜백을 인자로 받는 순수 모듈로 분리
+  - vitest: `exclude: [...configDefaults.exclude, 'mod/**']` — `mod/` 아래 프로브 `*.test.ts`가 수집되지 않음 확인
+  - biome: `mod/**` 포함, 엔진 생성물 `!mod/*/.claude-plugin/types` 제외로 결정. 경고 수는 master와 동일(32, 전부 기존 `src/`)
+  - 엔진 생성물: `.claude-plugin/types/`는 자체 `.gitignore`(`*`)를 갖고 생성됨 → 레포 gitignore 추가 불필요. 루트 `mod/streambreak/tsconfig.json`(extends 생성물)은 커밋 — 엔진이 한 번 로드한 체크아웃에서 `tsc -p mod/streambreak`로 V2 실행 가능
 - [ ] F3 (P0) 휴식 제안 타이머 — 메인 루프 `turn.start` 후 threshold(기본 10s)가 지나도 턴이 진행 중이면 `$.clock.after`로 토스트 "휴식 시간 — /streambreak" 1회(턴당 1회)
 - [ ] F4 (P0) `/streambreak` 커맨드(`session.start`에서 등록) + 탭형 Pane 셸(뉴스 / 게임 / 닫기). 사용자 행동으로만 연다
 - [ ] F5 (P0) 피드 수집 — `$.http.fetch` + 최소 RSS/Atom 파서(hnrss, TechCrunch, GeekNews), 발행일 내림차순, max_items 10, `$.store` TTL 캐시

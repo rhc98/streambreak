@@ -5,7 +5,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["src/**", "*.ts", "*.tsx", "*.json"]
+    "includes": ["src/**", "mod/**", "!mod/*/.claude-plugin/types", "*.ts", "*.tsx", "*.json"]
   },
   "formatter": {
     "enabled": true,
