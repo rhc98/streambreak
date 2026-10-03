@@ -31,7 +31,16 @@
 
 ## 기능 목록
 
-- [ ] F1 (P0) 스파이크 — 미검증 가정 3개 확인, 결과를 이 항목 아래에 기록: (a) Pane의 `isPlaced`가 데스크탑 Code 탭과 터미널(<144열 / ≥144열)에서 어떻게 나오는지, (b) `classic.Notification` 훅 가능 여부, (c) 정본 `mod/streambreak`를 세션 dev-mods 폴더에 symlink했을 때 핫리로드 가능 여부(불가 시 `--plugin-dir` / `CLAUDE_CODE_PLUGIN_DIRS` 중 개발 로드 방식 결정)
+- [x] F1 (P0) 스파이크 — 미검증 가정 3개 확인, 결과를 이 항목 아래에 기록: (a) Pane의 `isPlaced`가 데스크탑 Code 탭과 터미널(<144열 / ≥144열)에서 어떻게 나오는지, (b) `classic.Notification` 훅 가능 여부, (c) 정본 `mod/streambreak`를 세션 dev-mods 폴더에 symlink했을 때 핫리로드 가능 여부(불가 시 `--plugin-dir` / `CLAUDE_CODE_PLUGIN_DIRS` 중 개발 로드 방식 결정) (done · verified: 데스크탑 Code 탭 2.1.286 수동 실행 + Pane 로그 스크린샷, validate+tsc 통과 · 터미널 폭 확인은 E5, Notification 잔여는 F14로 이관)
+  - (a) 데스크탑 Code 탭: `/streambreak`(사용자 행동) → `isPlaced=true`, `surface=desktop`, `placement=dock`, viewport 106×63. 터미널 <144 / ≥144열은 E5 수동 확인으로 넘김
+  - (b) `classic.Notification` 훅은 등록·validate 모두 통과하지만, 데스크탑에서 약 2분 idle 동안 발화하지 않았다(로그 없음). 권한 프롬프트 경로는 미확인. 대안: 엔진 이벤트 `tool.check`의 `next(e)` 판정이 `ask`면 권한 대기로 본다(단, auto 모드에서는 `ask`가 사용자 대화상자 대신 모드의 판정기로 가므로 실제 프롬프트와 1:1은 아님). 스파이크에 `tool.check` 비-allow 로그를 넣어 두었고 F14에서 확정. idle 알림 대체는 F7(`turn.complete`)로 충분
+  - (c) dev-mods symlink(`~/.claude/dev-mods/<session-id>/streambreak` → 정본) + "Enable for this session" 승인으로 **최초 로드는 된다**. 그러나 정본 편집은 자동 핫리로드를 일으키지 않는다(감시가 symlink 대상을 따라가지 않음, `touch -h`/symlink 재생성도 무효). **`/reload-plugins`를 실행하면 symlink를 통해 정본을 다시 읽는다**(헤더 v2 반영, `session.start` 재발화 확인). → 개발 루프: 정본 편집 → `/reload-plugins`. 전역 설정(`CLAUDE_CODE_PLUGIN_DIRS`) 변경 불필요
+  - 확인: 서브에이전트 턴은 `turn.complete`(`agent=<id>`)만 오고 `turn.start`는 없다. 메인 턴보다 먼저 도착할 수 있다(S3 전제 일치)
+  - 확인: 리로드 후에도 `$.state`(spikeLog)는 유지된다(S7 전제 일치)
+  - 발견: 데스크탑 세션의 `session.start`는 `surface=null`, `isInteractive=false`로 온다 → surface 판단은 `session.start`가 아니라 `ui.render`의 `e.surface`로 해야 함
+  - 발견: 데스크탑 토스트는 플러그인 이름을 앞에 붙인다(`streambreak: streambreak: …`) → 토스트 문구에 `streambreak:` 접두어 넣지 말 것
+  - 발견: 엔진이 mod를 로드하면 `mod/streambreak/.claude-plugin/types/`를 생성할 수 있다 → F2에서 gitignore 처리
+  - 미해결: 셸 `claude`(2.1.282) OAuth 만료로 V6 헤드리스 스모크 미실행(재로그인 필요)
 - [ ] F2 (P0) Mod 골격 — 정본 `mod/streambreak/`에 직접 생성: `.claude-plugin/plugin.json`(name `streambreak`, `types` 지정), `hooks/hooks.json`, `hooks/register.tsx`, `types/index.d.ts`(`PluginState.streambreak` 계약: phase, tab, 뉴스 인덱스, 게임 상태). 함께 vitest가 `mod/**`를 줍지 않게 `exclude` 설정, biome `includes`에 `mod/**`를 넣을지 결정
 - [ ] F3 (P0) 휴식 제안 타이머 — 메인 루프 `turn.start` 후 threshold(기본 10s)가 지나도 턴이 진행 중이면 `$.clock.after`로 토스트 "휴식 시간 — /streambreak" 1회(턴당 1회)
 - [ ] F4 (P0) `/streambreak` 커맨드(`session.start`에서 등록) + 탭형 Pane 셸(뉴스 / 게임 / 닫기). 사용자 행동으로만 연다

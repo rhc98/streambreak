@@ -1,0 +1,7 @@
+{
+  "name": "streambreak",
+  "version": "0.1.0",
+  "description": "Break-time news and mini games while Claude works",
+  "author": { "name": "RHC" },
+  "types": "./types/index.d.ts"
+}
