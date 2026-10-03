@@ -60,3 +60,13 @@ brew install streambreak
 ## Config
 
 `~/.streambreak/config.toml` — threshold, language, popup size/position.
+
+## Claude Mod (in progress)
+
+Port of streambreak to a Claude Mod (function-hooks plugin that draws a Pane/Toast inside Claude Code terminal and desktop). Not started yet — planning only.
+
+- **Plan / progress SoT:** `plans/2026-10-03-streambreak-claude-mod-plan.md` (goalplan checklist). Read it first. Mark an item `[x]` only with a `verified:` basis.
+- **Canonical source:** `mod/streambreak/` in this repo (create it there directly). `~/.claude/dev-mods/<session-id>/…`, installed plugin caches and remote checkouts are derived copies — never edit them, and never commit absolute home paths.
+- **Do not touch** the existing Tauri app (`src/`, `src-tauri/`); the Mod is additive.
+- **Dev loop (verified commands only):** `claude plugin validate mod/streambreak`, `claude plugin test mod/streambreak`, `claude --plugin-dir mod/streambreak`. How to hot-reload from the canonical folder in a desktop session is an open question (plan F1(c)); load the `plugin-authoring` skill first in each new session.
+- **CI/release gotchas:** vitest has no `include`, so exclude `mod/**` before adding `*.test.ts` there. `release.yml` fires on `v*` tags — Mod releases must use `claude plugin tag` (`streambreak--v<ver>`), never `v0.x.x`.
