@@ -11,6 +11,8 @@ const en = {
   games: 'Games',
   close: 'Close',
   newsEmpty: 'No news yet.',
+  loading: 'Loading news…',
+  offline: 'Offline — showing the last saved news',
   gamesEmpty: 'Games are coming soon.',
 }
 
@@ -24,6 +26,8 @@ const ko: typeof en = {
   games: '게임',
   close: '닫기',
   newsEmpty: '아직 뉴스가 없습니다.',
+  loading: '뉴스를 불러오는 중…',
+  offline: '오프라인 — 마지막으로 저장된 뉴스입니다',
   gamesEmpty: '게임은 곧 추가됩니다.',
 }
 

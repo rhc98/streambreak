@@ -5,7 +5,15 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["src/**", "mod/**", "!mod/*/.claude-plugin/types", "*.ts", "*.tsx", "*.json"]
+    "includes": [
+      "src/**",
+      "mod/**",
+      "!mod/*/.claude-plugin/types",
+      "!**/.omc",
+      "*.ts",
+      "*.tsx",
+      "*.json"
+    ]
   },
   "formatter": {
     "enabled": true,

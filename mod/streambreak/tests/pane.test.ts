@@ -1,6 +1,6 @@
 import type { On } from 'claude-code'
 import type { Engine } from 'claude-code/testing'
-import { expect, test } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
 
 const PANE = 'streambreak'
 const SURFACES = ['terminal', 'desktop', 'mobile'] as const
@@ -23,6 +23,12 @@ const runCommand = ($: Engine) =>
   })
 
 const quietEngine = (on: On) => {
+  mock.clock(on, { now: 1_000_000 })
+  mock.store(on)
+  on('http.fetch', () => {
+    throw new Error('offline')
+  })
+  on('ui.log', () => ({ value: undefined }))
   const toasts: string[] = []
   const closed: string[] = []
   on('ui.toast', (_, e) => {
