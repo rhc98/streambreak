@@ -29,6 +29,7 @@ const quietEngine = (on: On) => {
     throw new Error('offline')
   })
   on('ui.log', () => ({ value: undefined }))
+  on('ui.panes', () => ({ value: [] }))
   const toasts: string[] = []
   const closed: string[] = []
   on('ui.toast', (_, e) => {

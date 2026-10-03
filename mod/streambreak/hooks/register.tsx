@@ -1,7 +1,7 @@
 import type { EngineInterface, Register, UiPane } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 
-import type { NewsFeed, Phase, Tab } from '../types'
+import type { GameKind, GomokuState, MemoryState, NewsFeed, Phase, Tab } from '../types'
 import {
   asFeedCache,
   cacheKey,
@@ -16,6 +16,9 @@ import {
   timeAgo,
   visibleWindow,
 } from './feed'
+import { newGomoku, playTurn } from './games/gomoku'
+import { FLIP_BACK_MS, flip, newMemory, settleMismatch } from './games/memory'
+import { AVAILABLE_GAMES, gameSelector, gomokuView, memoryView } from './games/views'
 import { type Language, strings } from './i18n'
 
 // $.state refs must be declared in the file that reads or writes them (validate's scan rule),
@@ -44,6 +47,9 @@ const news = atom(
   } as NewsFeed,
 )
 const newsIndex = atom({ plugin: 'streambreak', key: 'newsIndex' } as const, 0)
+const game = atom({ plugin: 'streambreak', key: 'game' } as const, null as GameKind | null)
+const memory = atom({ plugin: 'streambreak', key: 'memory' } as const, null as MemoryState | null)
+const gomoku = atom({ plugin: 'streambreak', key: 'gomoku' } as const, null as GomokuState | null)
 
 // Timers die with the module on a reload; session.start re-arms them from $.state (S7).
 type Timer = { cancel: () => void }
@@ -51,6 +57,8 @@ let suggestTimer: Timer | undefined
 let fadeTimer: Timer | undefined
 let rotationTimer: Timer | undefined
 let refreshing: Promise<void> | undefined
+let flipBackTimer: Timer | undefined
+let elapsedTimer: Timer | undefined
 
 const ourPane = async ($: EngineInterface) => (await $.ui.panes()).find(pane => pane.id === PANE)
 // The person can see it: placed (not waiting on width or an older desktop) and the front tab.
@@ -218,6 +226,8 @@ const startRotation = ($: EngineInterface) => {
       if (!(await ourPane($))) return rotationTimer === self ? stopRotation() : self.cancel()
       await update($, newsIndex, index => index + 1)
       await refreshNews($)
+      // No event says a background pane came to the front again: the Memory clock catches up here.
+      await syncElapsedClock($)
     }
     tick().catch(error => debug($, `rotation failed: ${error}`))
   })
@@ -227,12 +237,102 @@ const startRotation = ($: EngineInterface) => {
 const stopRotation = () => {
   rotationTimer?.cancel()
   rotationTimer = undefined
+  stopElapsedClock() // S9: no game tick for a closed pane
+}
+
+// F11: the games tab opens on a random game the first time; each board is kept until New game.
+const ensureGame = async ($: EngineInterface) => {
+  let picked: GameKind = 'memory'
+  await update($, game, current => {
+    picked =
+      current ?? AVAILABLE_GAMES[Math.floor(Math.random() * AVAILABLE_GAMES.length)] ?? 'memory'
+    return current === picked ? current : picked
+  })
+  await startGame($, picked, false)
+}
+
+// Shows `kind`, dealing a fresh board when asked (New game) or when it has none. A kept board's
+// pending flip-back is left alone: its timer, or the next press, still settles it (S9).
+const startGame = async ($: EngineInterface, kind: GameKind, isFresh: boolean) => {
+  await update($, game, current => (current === kind ? current : kind))
+  if (kind === 'memory') {
+    if (isFresh) flipBackTimer?.cancel()
+    await update($, memory, current => (current && !isFresh ? current : newMemory()))
+  }
+  if (kind === 'gomoku') {
+    await update($, gomoku, current => (current && !isFresh ? current : newGomoku()))
+  }
+  await syncElapsedClock($)
+}
+
+// S9: a reopened pane (or a reloaded module) turns back a mismatch whose timer may be gone.
+const settlePendingMismatch = ($: EngineInterface) =>
+  update($, memory, current => (current?.mismatch ? settleMismatch(current) : current))
+
+// F8: a mismatched pair turns back after 600 ms. The timer is armed in the same step as the write
+// (no await between), and it settles only the mismatch it was armed for: `moves` grows with every
+// pair, so it tells this mismatch from a later one on the same two cards.
+const flipCard = async ($: EngineInterface, index: number) => {
+  const now = await $.clock.now()
+  let armedAt: number | null = null
+  await update($, memory, current => {
+    if (!current) return current
+    const next = flip(current, index, now)
+    armedAt = next.mismatch && next.mismatch !== current.mismatch ? next.moves : null
+    return next
+  })
+  if (armedAt !== null) {
+    const moves: number = armedAt
+    flipBackTimer?.cancel()
+    flipBackTimer = $.clock.after(FLIP_BACK_MS, () => {
+      update($, memory, current =>
+        current?.mismatch && current.moves === moves ? settleMismatch(current) : current,
+      ).catch(error => debug($, `flip back failed: ${error}`))
+    })
+  }
+  await syncElapsedClock($)
+}
+
+// F9: the person's stone and the AI's reply land in one write.
+const playGomoku = ($: EngineInterface, r: number, c: number) =>
+  update($, gomoku, current => (current ? playTurn(current, r, c) : current))
+
+// The Memory clock redraws each second only while it can be seen moving: pane shown, games tab,
+// Memory started and unfinished. Re-checked after anything that changes one of those (S9).
+const syncElapsedClock = async ($: EngineInterface) => {
+  const [pane, currentTab, currentGame, state] = await Promise.all([
+    ourPane($),
+    read($, tab),
+    read($, game),
+    read($, memory),
+  ])
+  const isRunning =
+    isVisible(pane) &&
+    currentTab === 'games' &&
+    currentGame === 'memory' &&
+    state !== null &&
+    state.startedAt !== null &&
+    state.finishedAt === null
+  if (!isRunning) return stopElapsedClock()
+  if (elapsedTimer) return
+  elapsedTimer = $.clock.every(1_000, () => {
+    $.ui.invalidate('ui.render')
+    syncElapsedClock($).catch(error => debug($, `clock tick failed: ${error}`))
+  })
+}
+
+const stopElapsedClock = () => {
+  elapsedTimer?.cancel()
+  elapsedTimer = undefined
 }
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'streambreak', description: 'Open the streambreak pane' })
 
+    // S9: a mismatched pair whose flip-back timer died with the old module turns back now.
+    await settlePendingMismatch($)
+    if ((await read($, tab)) === 'games') await ensureGame($)
     // S7: a reload dropped the timers; re-arm from what $.state still holds.
     const current = await read($, phase)
     const id = await read($, turnId)
@@ -242,6 +342,7 @@ export const register: Register = on => {
     }
     if (current === 'done') armFade($)
     if (await ourPane($)) startRotation($)
+    await syncElapsedClock($)
 
     return next(e)
   })
@@ -296,7 +397,10 @@ export const register: Register = on => {
   // F4 / S5: the pane opens only on the person's action; a pane left unplaced is explained once.
   on('command.run', { command: 'streambreak' }, async $ => {
     const opened = await $.ui.open({ id: PANE, title: 'streambreak' })
+    await settlePendingMismatch($) // S9: reopening resolves a flip-back left waiting
+    if ((await read($, tab)) === 'games') await ensureGame($) // F11: never an empty games tab
     startRotation($)
+    await syncElapsedClock($)
     // From a timer, not this dispatch: work a finished command dispatch left running may be dropped.
     $.clock.after(0, () => void refreshNews($))
     if (opened.isPlaced) return { text: t.opened }
@@ -307,15 +411,39 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text, Button, Link } = $.ui.resolve(e)
-    const [currentPhase, currentTab, feed, index, now] = await Promise.all([
+    const els = $.ui.resolve(e)
+    const { Box, Text, Button, Link } = els
+    // Each read subscribes this drawing: read only what the shown tab draws, so a news tick never
+    // redraws an 81-button board and a game move never redraws the news.
+    const [currentPhase, currentTab, now] = await Promise.all([
       read($, phase),
       read($, tab),
-      read($, news),
-      read($, newsIndex),
       $.clock.now(),
     ])
-    const select = (next: Tab) => () => void update($, tab, () => next)
+    const isNews = currentTab === 'news'
+    const [feed, index] = isNews
+      ? await Promise.all([read($, news), read($, newsIndex)])
+      : [null, 0]
+    const [currentGame, memoryState, gomokuState] = isNews
+      ? [null, null, null]
+      : await Promise.all([read($, game), read($, memory), read($, gomoku)])
+
+    // Handlers read what they need when pressed (another surface may have moved on since this
+    // drawing) and send failures to the debug log.
+    const act = (label: string, work: () => Promise<unknown>) => () => {
+      work().catch(error => debug($, `${label} failed: ${error}`))
+    }
+    const select = (next: Tab) =>
+      act('tab switch', async () => {
+        if (next === 'games') await ensureGame($) // the board first, so no empty tab is drawn
+        await update($, tab, current => (current === next ? current : next))
+        await syncElapsedClock($)
+      })
+    const pickGame = (kind: GameKind) => act('game pick', () => startGame($, kind, false))()
+    const newGame = act('new game', async () => {
+      const current = await read($, game)
+      return current ? startGame($, current, true) : ensureGame($)
+    })
 
     return (
       <Box flexDirection="column" gap={1}>
@@ -341,11 +469,11 @@ export const register: Register = on => {
           >
             {t.games}
           </Button>
-          <Button key="close" role="dismiss" onPress={() => void closePane($)}>
+          <Button key="close" role="dismiss" onPress={act('close', () => closePane($))}>
             {t.close}
           </Button>
         </Box>
-        {currentTab === 'news' ? (
+        {isNews && feed ? (
           <Box key="news" flexDirection="column" gap={1}>
             {feed.isOffline && <Text color="yellow">{t.offline}</Text>}
             {feed.items.length === 0 && (
@@ -369,7 +497,18 @@ export const register: Register = on => {
             })}
           </Box>
         ) : (
-          <Text dimColor>{t.gamesEmpty}</Text>
+          <Box key="games" flexDirection="column" gap={1}>
+            {gameSelector(els, t, currentGame, pickGame, newGame)}
+            {currentGame === 'memory' && memoryState ? (
+              memoryView(els, t, memoryState, now, cardIndex =>
+                act('flip', () => flipCard($, cardIndex))(),
+              )
+            ) : currentGame === 'gomoku' && gomokuState ? (
+              gomokuView(els, t, gomokuState, (r, c) => act('move', () => playGomoku($, r, c))())
+            ) : (
+              <Text dimColor>{t.gamesEmpty}</Text>
+            )}
+          </Box>
         )}
       </Box>
     )

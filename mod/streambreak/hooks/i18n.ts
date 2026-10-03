@@ -13,7 +13,15 @@ const en = {
   newsEmpty: 'No news yet.',
   loading: 'Loading news…',
   offline: 'Offline — showing the last saved news',
-  gamesEmpty: 'Games are coming soon.',
+  gamesEmpty: 'Pick a game.',
+  memory: 'Memory',
+  gomoku: 'Gomoku',
+  newGame: 'New game',
+  memoryStatus: (moves: number, seconds: number) => `Moves ${moves} · ${seconds}s`,
+  memoryDone: (moves: number, seconds: number) => `Complete! ${moves} moves in ${seconds}s`,
+  gomokuTurn: (lastAi: string | null) =>
+    lastAi ? `AI played ${lastAi} — your turn (X)` : 'Your turn (X)',
+  gomokuResult: { black: 'You win!', white: 'AI wins', draw: 'Draw' },
 }
 
 const ko: typeof en = {
@@ -28,7 +36,15 @@ const ko: typeof en = {
   newsEmpty: '아직 뉴스가 없습니다.',
   loading: '뉴스를 불러오는 중…',
   offline: '오프라인 — 마지막으로 저장된 뉴스입니다',
-  gamesEmpty: '게임은 곧 추가됩니다.',
+  gamesEmpty: '게임을 고르세요.',
+  memory: '메모리',
+  gomoku: '오목',
+  newGame: '새 게임',
+  memoryStatus: (moves: number, seconds: number) => `${moves}수 · ${seconds}초`,
+  memoryDone: (moves: number, seconds: number) => `완료! ${moves}수, ${seconds}초`,
+  gomokuTurn: (lastAi: string | null) =>
+    lastAi ? `AI가 ${lastAi}에 둠 — 당신 차례 (X)` : '당신 차례 (X)',
+  gomokuResult: { black: '승리!', white: 'AI 승리', draw: '무승부' },
 }
 
 export type Strings = typeof en
