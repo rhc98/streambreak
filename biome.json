@@ -47,5 +47,11 @@
       "bracketSpacing": true,
       "arrowParentheses": "asNeeded"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["mod/**"],
+      "linter": { "rules": { "a11y": "off" } }
+    }
+  ]
 }

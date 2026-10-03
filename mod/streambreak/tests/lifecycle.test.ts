@@ -1,0 +1,326 @@
+import type { On, RenderSurface, UiPane } from 'claude-code'
+import type { Engine, Plugin } from 'claude-code/testing'
+import { expect, mock, test } from 'claude-code/testing'
+
+const PANE = 'streambreak'
+const THRESHOLD_MS = 10_000
+const FADE_OUT_MS = 3_000
+
+// The engine beneath the plugin: a mocked clock, a recorded toast line, and a pane list the
+// test controls (open / shown / focused / placed), as a session's surfaces would report it.
+// A reload drops every timer the old module armed, but the kit keeps one module instance. This
+// plugin, loaded above streambreak, counts session.starts and refuses any clock.after armed
+// before the latest one, so a "reload" here really leaves only what session.start re-arms.
+const reloader: Plugin = {
+  name: 'reloader',
+  tier: 'prepend',
+  register(on) {
+    let epoch = 0
+    on('session.start', (_, e, next) => {
+      epoch += 1
+      return next(e)
+    })
+    on('clock.after', async (_, e, next) => {
+      const armedIn = epoch
+      const fired = await next(e)
+      return armedIn === epoch ? fired : { deny: 'module reloaded' }
+    })
+  },
+}
+
+const engine = ($: Engine, on: On) => {
+  const clock = mock.clock(on, { now: 1_000_000 })
+  const toasts: string[] = []
+  const closed: string[] = []
+  let pane: UiPane | undefined
+
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  on('session.end', (_, e) => ({ sessionId: e.sessionId }))
+  on('turn.start', (_, e) => ({ turnId: e.turnId }))
+  on('turn.complete', (_, e) => ({ text: e.answer }))
+  on('command.register', (_, e) => ({ value: { command: e.name } }))
+  on('ui.toast', (_, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('ui.log', () => ({ value: undefined }))
+  on('ui.panes', () => ({ value: pane ? [pane] : [] }))
+  on('ui.close', (_, e) => {
+    closed.push(e.id)
+    pane = undefined
+    return { value: undefined }
+  })
+
+  return {
+    clock,
+    toasts,
+    closed,
+    openPane: (overrides: Partial<UiPane> = {}) => {
+      pane = {
+        id: PANE,
+        title: PANE,
+        isShown: true,
+        isFocused: false,
+        isPlaced: true,
+        ...overrides,
+      }
+    },
+    /** A hot reload: old timers die (see `reloader`), $.state stays, session.start fires again. */
+    reload: () => $.session.start(start),
+  }
+}
+
+const start = { cwd: '/repo', surface: 'terminal', isInteractive: true } as const
+const complete = (
+  turnId: string,
+  extra: { reason?: 'answer' | 'aborted' | 'error'; agentId?: string } = {},
+) => ({
+  answer: 'ok',
+  durationMs: 1,
+  isAborted: extra.reason === 'aborted',
+  turnId,
+  reason: extra.reason ?? ('answer' as const),
+  ...(extra.agentId === undefined ? {} : { agentId: extra.agentId }),
+})
+
+const mountPane = ($: Engine, surface: RenderSurface = 'terminal') =>
+  $.ui.mount({
+    plugin: 'streambreak',
+    surface,
+    component: 'Pane',
+    requestId: PANE,
+    props: {
+      title: PANE,
+      isFocused: false,
+      bodyColumns: 60,
+      placement: 'dock',
+      scroll: { offset: 0, bodyRows: 20 },
+      view: {},
+    },
+  })
+
+const bannerShown = async ($: Engine) => {
+  const pane = await mountPane($)
+  const banner = await pane.find({ key: 'banner' })
+  await pane.unmount()
+
+  return banner !== undefined
+}
+
+test('F3: a turn past the threshold offers one break toast', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+
+  await sim.clock.advance(THRESHOLD_MS - 1)
+  expect(sim.toasts).toHaveLength(0)
+  await sim.clock.advance(1)
+  expect(sim.toasts).toHaveLength(1)
+  await sim.clock.advance(THRESHOLD_MS * 3)
+  expect(sim.toasts).toHaveLength(1)
+})
+
+test('F3: each new main turn gets its own offer', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await sim.clock.advance(THRESHOLD_MS)
+  await $.turn.complete(complete('t1'))
+  await $.turn.start({ text: 'again', turnId: 't2' })
+  await sim.clock.advance(THRESHOLD_MS)
+
+  expect(sim.toasts).toHaveLength(2)
+})
+
+test('S4: a turn completing before the threshold never toasts', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await sim.clock.advance(THRESHOLD_MS / 2)
+  await $.turn.complete(complete('t1'))
+  await sim.clock.advance(THRESHOLD_MS * 2)
+
+  expect(sim.toasts).toHaveLength(0)
+})
+
+test('S4: an aborted turn with the pane open shows no banner and stays open', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane()
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1', { reason: 'aborted' }))
+  await sim.clock.advance(FADE_OUT_MS * 2)
+
+  expect(await bannerShown($)).toBe(false)
+  expect(sim.closed).toHaveLength(0)
+})
+
+test('F7: a turn ending in an error shows no "finished" banner', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane()
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1', { reason: 'error' }))
+
+  expect(await bannerShown($)).toBe(false)
+  await sim.clock.advance(FADE_OUT_MS)
+  expect(sim.closed).toHaveLength(0)
+})
+
+test('S3: a subagent turn.complete with the main turnId leaves the main turn running', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane({ isShown: false })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1', { agentId: 'a1' }))
+
+  expect(await bannerShown($)).toBe(false)
+  await sim.clock.advance(THRESHOLD_MS)
+  expect(sim.toasts).toHaveLength(1)
+})
+
+test('S2: no break toast while the pane is already shown', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane()
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await sim.clock.advance(THRESHOLD_MS)
+
+  expect(sim.toasts).toHaveLength(0)
+})
+
+test('F7: completion with the pane open shows the banner, then closes it', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane()
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1'))
+
+  expect(await bannerShown($)).toBe(true)
+  await sim.clock.advance(FADE_OUT_MS)
+  expect(sim.closed).toEqual([PANE])
+  expect(await bannerShown($)).toBe(false)
+})
+
+test('F7: completion with no pane open changes nothing on screen', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1'))
+  await sim.clock.advance(FADE_OUT_MS)
+
+  expect(sim.closed).toHaveLength(0)
+  expect(await bannerShown($)).toBe(false)
+})
+
+test('S5: an unplaced or background pane is never closed by the fade', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  for (const hidden of [{ isPlaced: false }, { isShown: false }]) {
+    sim.openPane(hidden)
+    await $.turn.start({ text: 'go', turnId: 't1' })
+    await $.turn.complete(complete('t1'))
+    await sim.clock.advance(FADE_OUT_MS * 2)
+
+    expect(sim.closed).toHaveLength(0)
+    expect(await bannerShown($)).toBe(false)
+  }
+})
+
+test('S1: a pane holding the keyboard stays until it lets go', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane({ isFocused: true })
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1'))
+  await sim.clock.advance(FADE_OUT_MS * 3)
+
+  expect(sim.closed).toHaveLength(0)
+  expect(await bannerShown($)).toBe(true)
+
+  sim.openPane({ isFocused: false })
+  await sim.clock.advance(FADE_OUT_MS)
+  expect(sim.closed).toEqual([PANE])
+})
+
+test('S2: a new turn takes the banner down before it fades', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane()
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1'))
+  await $.turn.start({ text: 'again', turnId: 't2' })
+  await sim.clock.advance(FADE_OUT_MS)
+
+  expect(sim.closed).toHaveLength(0)
+  expect(await bannerShown($)).toBe(false)
+})
+
+test(
+  'S7: a reload mid-turn re-arms the break timer for the time left',
+  { plugins: [reloader] },
+  async ($, on) => {
+    const sim = engine($, on)
+    await $.session.start(start)
+    await $.turn.start({ text: 'go', turnId: 't1' })
+    await sim.clock.advance(4_000)
+    await sim.reload()
+    await sim.clock.advance(THRESHOLD_MS - 4_000 - 1)
+    expect(sim.toasts).toHaveLength(0)
+    await sim.clock.advance(1)
+
+    expect(sim.toasts).toHaveLength(1)
+  },
+)
+
+test(
+  'S7: a reload while the banner shows re-arms the fade',
+  { plugins: [reloader] },
+  async ($, on) => {
+    const sim = engine($, on)
+    await $.session.start(start)
+    sim.openPane()
+    await $.turn.start({ text: 'go', turnId: 't1' })
+    await $.turn.complete(complete('t1'))
+    await sim.reload()
+    await sim.clock.advance(FADE_OUT_MS)
+
+    expect(sim.closed).toEqual([PANE])
+  },
+)
+
+test('S10: /clear ends the session and drops the pending offer', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
+  await sim.clock.advance(THRESHOLD_MS)
+
+  expect(sim.toasts).toHaveLength(0)
+})
+
+test('S10: /clear while the banner shows takes it down and leaves the pane open', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane()
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1'))
+  await $.session.end({ reason: 'clear', sessionId: 's1', resume: { id: 's1' } })
+
+  expect(await bannerShown($)).toBe(false)
+  await sim.clock.advance(FADE_OUT_MS)
+  expect(sim.closed).toHaveLength(0)
+})
+
+test('S5: a pane moved to a background tab during the fade is left open', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  sim.openPane()
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.turn.complete(complete('t1'))
+  sim.openPane({ isShown: false })
+  await sim.clock.advance(FADE_OUT_MS)
+
+  expect(sim.closed).toHaveLength(0)
+  expect(await bannerShown($)).toBe(false)
+})

@@ -47,11 +47,12 @@
   - vitest: `exclude: [...configDefaults.exclude, 'mod/**']` — `mod/` 아래 프로브 `*.test.ts`가 수집되지 않음 확인
   - biome: `mod/**` 포함, 엔진 생성물 `!mod/*/.claude-plugin/types` 제외로 결정. 경고 수는 master와 동일(32, 전부 기존 `src/`)
   - 엔진 생성물: `.claude-plugin/types/`는 자체 `.gitignore`(`*`)를 갖고 생성됨 → 레포 gitignore 추가 불필요. 루트 `mod/streambreak/tsconfig.json`(extends 생성물)은 커밋 — 엔진이 한 번 로드한 체크아웃에서 `tsc -p mod/streambreak`로 V2 실행 가능
-- [ ] F3 (P0) 휴식 제안 타이머 — 메인 루프 `turn.start` 후 threshold(기본 10s)가 지나도 턴이 진행 중이면 `$.clock.after`로 토스트 "휴식 시간 — /streambreak" 1회(턴당 1회)
-- [ ] F4 (P0) `/streambreak` 커맨드(`session.start`에서 등록) + 탭형 Pane 셸(뉴스 / 게임 / 닫기). 사용자 행동으로만 연다
+- [x] F3 (P0) 휴식 제안 타이머 — 메인 루프 `turn.start` 후 threshold(기본 10s)가 지나도 턴이 진행 중이면 `$.clock.after`로 토스트 "휴식 시간 — /streambreak" 1회(턴당 1회) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
+- [x] F4 (P0) `/streambreak` 커맨드(`session.start`에서 등록) + 탭형 Pane 셸(뉴스 / 게임 / 닫기). 사용자 행동으로만 연다 (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
 - [ ] F5 (P0) 피드 수집 — `$.http.fetch` + 최소 RSS/Atom 파서(hnrss, TechCrunch, GeekNews), 발행일 내림차순, max_items 10, `$.store` TTL 캐시
 - [ ] F6 (P0) 뉴스 탭 UI — 5개 카드 목록, `Link`로 원문 열기, `$.clock.every` 15s 로테이션
-- [ ] F7 (P0) 완료 배너 — 메인 루프 `turn.complete`(중단 아님) 시 Pane에 "작업 완료" 표시. 키보드를 쥐고 있으면(게임 중) 유지, 아니면 fade-out 3s 후 `$.ui.close`
+- [x] F7 (P0) 완료 배너 — 메인 루프 `turn.complete`(중단 아님) 시 Pane에 "작업 완료" 표시. 키보드를 쥐고 있으면(게임 중) 유지, 아니면 fade-out 3s 후 `$.ui.close` (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
+  - F3/F4/F7 구현 노트: 상태 전이는 `transition(from,to)`(versioned `update` 안에서 확인+쓰기)로만 한다 — 늦게 깬 타이머가 다른 훅의 전이를 덮지 않게. 배너·자동 닫기는 `isShown && isPlaced`인 Pane에만, 배너는 `reason === 'answer'`일 때만. 미확인: `i18n.ts`만 저장했을 때 `session.start`가 다시 오는지(d.ts: "changed modules only") — 데스크탑 수동 확인 필요
 - [ ] F8 (P1) Memory Match — 8쌍 16장, Button 카드, 불일치 되돌리기 지연은 `$.clock.after`, 소요 시간 표시
 - [ ] F9 (P1) Gomoku 9×9 vs AI — `createBoard / checkWin / evaluateLine / scorePosition / aiMove` 순수 로직 포팅, Button 격자
 - [ ] F10 (P2) Minesweeper 8×8 / 지뢰 10 — 열기와 깃발 모드 토글 Button, flood fill, 승패 판정
@@ -66,16 +67,16 @@
 
 ## 혼합 상태
 
-- [ ] S1 Pane이 열려 있고 게임 진행 중에 `turn.complete`가 도착하면 게임 상태를 유지한 채 배너만 얹고, 키보드를 쥐고 있으면 자동 닫기를 미룬다 (F7 × F8·F9·F10·F11)
-- [ ] S2 Pane이 이미 열려 있을 때 새 `turn.start`가 오면 배너를 해제하고 제안 토스트는 다시 띄우지 않는다 (F3 × F4 × F7)
-- [ ] S3 서브에이전트 턴(`agentId` 있음)의 `turn.complete`는 무시한다 — 메인 턴의 타이머와 배너에 영향이 없어야 한다 (F3 × F7)
-- [ ] S4 threshold 전에 `turn.complete`가 오면 대기 중인 타이머를 취소해 늦은 토스트가 나오지 않게 하고, `isAborted`(중단)이면 배너 없이 조용히 정리한다 (F3 × F7)
-- [ ] S5 Pane이 놓이지 못하면(`isPlaced:false`, 구형 데스크탑 등) 열렸다고 가정하지 않고 사유와 대안을 토스트로 안내하며, 재시도 루프는 돌지 않는다 (F4)
+- [/] S1 Pane이 열려 있고 게임 진행 중에 `turn.complete`가 도착하면 게임 상태를 유지한 채 배너만 얹고, 키보드를 쥐고 있으면 자동 닫기를 미룬다 (F7 × F8·F9·F10·F11) (in-progress · 배너 유지/키보드 보류는 테스트 완료, 게임 상태 보존은 F8–F11 대기)
+- [x] S2 Pane이 이미 열려 있을 때 새 `turn.start`가 오면 배너를 해제하고 제안 토스트는 다시 띄우지 않는다 (F3 × F4 × F7) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
+- [x] S3 서브에이전트 턴(`agentId` 있음)의 `turn.complete`는 무시한다 — 메인 턴의 타이머와 배너에 영향이 없어야 한다 (F3 × F7) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
+- [x] S4 threshold 전에 `turn.complete`가 오면 대기 중인 타이머를 취소해 늦은 토스트가 나오지 않게 하고, `isAborted`(중단)이면 배너 없이 조용히 정리한다 (F3 × F7) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
+- [x] S5 Pane이 놓이지 못하면(`isPlaced:false`, 구형 데스크탑 등) 열렸다고 가정하지 않고 사유와 대안을 토스트로 안내하며, 재시도 루프는 돌지 않는다 (F4) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
 - [ ] S6 언어가 바뀌면(Pane 토글 또는 설정 변경) 피드 캐시는 언어별로 분리하고 인덱스를 0으로 리셋하고 새 언어로 다시 fetch한다(기존 `onToggleLanguage`와 동일). 우선순위는 Pane 토글(`$.store`) > `userConfig`이고, 설정 메뉴에서 값을 바꾸면 오버라이드를 지운다 (F5 × F6 × F12 × F13)
-- [ ] S7 핫리로드나 설정 변경으로 모듈이 재로드되면 모듈 변수와 `$.clock` 타이머가 사라지므로, `session.start`에서 phase, 로테이션 타이머, 대기 중 전이를 재무장하거나 정리한다. `$.state`의 게임 보드는 유지한다 (F3 × F6 × F8)
+- [x] S7 핫리로드나 설정 변경으로 모듈이 재로드되면 모듈 변수와 `$.clock` 타이머가 사라지므로, `session.start`에서 phase, 로테이션 타이머, 대기 중 전이를 재무장하거나 정리한다. `$.state`의 게임 보드는 유지한다 (F3 × F6 × F8) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
 - [ ] S8 피드 fetch가 실패하거나 오프라인이면 마지막 캐시로 로테이션을 계속하고 "오프라인"을 표기한다. TTL 전에는 재시도하지 않고, 캐시도 없으면 빈 상태 문구를 보여준다 (F5 × F6)
 - [ ] S9 타이머성 게임 전이(Memory 불일치 되돌리기, 소요 시간 tick)가 Pane 닫힘과 겹쳐도 카드가 뒤집힌 채 굳지 않는다 — 닫히면 tick을 멈추고, 재오픈이나 재로드 시 대기 전이를 해소한다 (F8 × F4 × S7)
-- [ ] S10 `/clear`는 `session.end(reason:'clear')`만 오고 `session.start`가 오지 않으므로, phase와 배너 초기화는 `session.end`에서 처리한다(게임 보드는 유지) (F3 × F7)
+- [x] S10 `/clear`는 `session.end(reason:'clear')`만 오고 `session.start`가 오지 않으므로, phase와 배너 초기화는 `session.end`에서 처리한다(게임 보드는 유지) (F3 × F7) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
 
 ---
 
@@ -84,8 +85,8 @@
 - [ ] V1 `claude plugin validate mod/streambreak` — 에러 0 (매니페스트, hooks 모듈, `$.state` 키가 `types/index.d.ts` 계약과 일치)
 - [ ] V2 타입체크 — `/plugin-types`로 `.claude/types` 생성 후 d.ts 헤더의 tsconfig로 `tsc --noEmit` 통과
 - [ ] V3 `claude plugin test` 순수 로직 — Gomoku(즉승 수 선택, 차단), Minesweeper(flood fill, 승패), Memory(일치 / 불일치), 피드 파서(고정 픽스처 3종 → `{title,url,source,icon,published_at}`, 정렬, max_items 10)
-- [ ] V4 `claude plugin test` 훅 시나리오 — 가짜 시계로 S2–S4, S7, S10 재현: threshold 후 토스트 1회, 조기 `turn.complete` / 중단 시 토스트 없음, 서브에이전트 `turn.complete` 무시, 재로드 후 재무장, `/clear` 후 phase 초기화
-- [ ] V5 `claude plugin test` UI 마운트를 `['terminal','desktop','mobile']` 모두에서 통과 — Pane 렌더, 탭 전환, Button 동작, 트리 검증 거부 없음 (S1, S5, S6, S8, S9)
+- [x] V4 `claude plugin test` 훅 시나리오 — 가짜 시계로 S2–S4, S7, S10 재현: threshold 후 토스트 1회, 조기 `turn.complete` / 중단 시 토스트 없음, 서브에이전트 `turn.complete` 무시, 재로드 후 재무장, `/clear` 후 phase 초기화 (done · verified: tests/lifecycle.test.ts 17건; 테스트 `$`에는 state 명사가 없어 토스트/닫힘/배너로 판정, 재로드는 inline `reloader` 플러그인이 이전 clock.after를 거부해 모사)
+- [/] V5 `claude plugin test` UI 마운트를 `['terminal','desktop','mobile']` 모두에서 통과 — Pane 렌더, 탭 전환, Button 동작, 트리 검증 거부 없음 (S1, S5, S6, S8, S9) (in-progress · tests/pane.test.ts: 3표면 탭 전환·닫기, F4, S5 통과. S6, S8, S9는 해당 기능 구현 후)
 - [ ] V6 헤드리스 로드 스모크 — `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude -p --plugin-dir mod/streambreak "hi"` 종료코드 0, stderr에 load / refused 문구 없음
 - [ ] V7 기존 앱 회귀 없음 — `bun run check && bun run test` 및 `cargo test --manifest-path src-tauri/Cargo.toml` 통과(vitest가 `mod/**`를 줍지 않음 포함, biome에 `mod/**`를 넣었다면 그것도 통과)
 - [ ] V8 Tauri 앱 무변경 — `git diff --stat master..HEAD -- src src-tauri`가 비어 있음
