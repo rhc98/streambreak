@@ -2,15 +2,20 @@
 // the state it read, and the handlers it built. Only Box / Text / Button, which every surface has.
 import type { Elements, RenderSurface } from 'claude-code'
 
-import type { GameKind, GomokuState, MemoryState } from '../../types'
+import type { GameKind, GomokuState, MemoryState, MineCell, MinesState } from '../../types'
 import type { Strings } from '../i18n'
 import { SIZE } from './gomoku'
 import { elapsedSeconds, SYMBOLS } from './memory'
+import { flagsPlaced, MINES } from './minesweeper'
 
 type Els = Elements[RenderSurface]
 
-/** The games the tab offers, in selector order (Minesweeper joins in F10). */
-export const AVAILABLE_GAMES = ['memory', 'gomoku'] as const satisfies readonly GameKind[]
+/** The games the tab offers, in selector order. */
+export const AVAILABLE_GAMES = [
+  'memory',
+  'minesweeper',
+  'gomoku',
+] as const satisfies readonly GameKind[]
 
 const COLUMNS = 'abcdefghi'
 export const cellName = (r: number, c: number) => `${COLUMNS[c] ?? '?'}${r + 1}`
@@ -123,6 +128,59 @@ export const gomokuView = (
           {line.cells.map(({ stone, r, c, key }) => (
             <Button key={key} plain dimColor={stone === 0} onPress={() => onPlay(r, c)}>
               {STONES[stone]}
+            </Button>
+          ))}
+        </Box>
+      ))}
+    </Box>
+  )
+}
+
+// ASCII for the same reason as Gomoku: one column everywhere, so the grid and clicks line up.
+const mineLabel = (cell: MineCell) => {
+  if (cell.isFlagged && !cell.isRevealed) return 'F'
+  if (!cell.isRevealed) return '#'
+  if (cell.isMine) return '*'
+  return cell.adjacent === 0 ? '.' : String(cell.adjacent)
+}
+
+export const minesView = (
+  els: Els,
+  t: Strings,
+  state: MinesState,
+  onPress: (r: number, c: number) => void,
+  onToggleMode: () => void,
+) => {
+  const { Box, Text, Button } = els
+  const grid = state.board.map((row, r) => ({
+    key: `mines:row:${r}`,
+    cells: row.map((cell, c) => ({ cell, r, c, key: `mines:${r}:${c}` })),
+  }))
+
+  return (
+    <Box key="minesweeper" flexDirection="column">
+      <Box flexDirection="row" gap={1}>
+        <Text bold={state.status !== 'playing'}>
+          {state.status === 'playing'
+            ? t.minesStatus(MINES - flagsPlaced(state))
+            : t.minesResult[state.status]}
+        </Text>
+        {state.status === 'playing' && (
+          <Button key="mines:mode" onPress={onToggleMode}>
+            {t.minesMode[state.mode]}
+          </Button>
+        )}
+      </Box>
+      {grid.map(line => (
+        <Box key={line.key} flexDirection="row" gap={1}>
+          {line.cells.map(({ cell, r, c, key }) => (
+            <Button
+              key={key}
+              plain
+              dimColor={cell.isRevealed && !cell.isMine}
+              onPress={() => onPress(r, c)}
+            >
+              {mineLabel(cell)}
             </Button>
           ))}
         </Box>

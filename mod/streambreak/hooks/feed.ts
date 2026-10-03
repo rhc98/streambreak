@@ -164,17 +164,20 @@ export const visibleWindow = (items: readonly NewsItem[], index: number) => {
   return items.slice(start).concat(items.slice(0, start)).slice(0, count)
 }
 
+export type AgoUnits = { justNow: string; minutes: string; hours: string; days: string }
+const ENGLISH_UNITS: AgoUnits = { justNow: 'just now', minutes: 'm', hours: 'h', days: 'd' }
+
 /** "just now", "5m", "3h", "2d" — the Tauri NewsCard's format; "" when undated. */
-export const timeAgo = (publishedAt: string, now: number) => {
+export const timeAgo = (publishedAt: string, now: number, units: AgoUnits = ENGLISH_UNITS) => {
   const time = Date.parse(publishedAt)
   if (Number.isNaN(time)) return ''
   const minutes = Math.floor((now - time) / 60_000)
-  if (minutes < 1) return 'just now'
-  if (minutes < 60) return `${minutes}m`
+  if (minutes < 1) return units.justNow
+  if (minutes < 60) return `${minutes}${units.minutes}`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `${hours}h`
+  if (hours < 24) return `${hours}${units.hours}`
 
-  return `${Math.floor(hours / 24)}d`
+  return `${Math.floor(hours / 24)}${units.days}`
 }
 
 // --- Cache policy (S8). register.tsx does the I/O; `$` never crosses an import (validate rule).

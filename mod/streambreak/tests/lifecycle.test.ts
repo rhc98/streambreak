@@ -30,6 +30,7 @@ const reloader: Plugin = {
 
 const engine = ($: Engine, on: On) => {
   const clock = mock.clock(on, { now: 1_000_000 })
+  mock.store(on)
   const toasts: string[] = []
   const closed: string[] = []
   let pane: UiPane | undefined
@@ -44,7 +45,11 @@ const engine = ($: Engine, on: On) => {
     return { value: undefined }
   })
   on('ui.log', () => ({ value: undefined }))
-  on('ui.panes', () => ({ value: pane ? [pane] : [] }))
+  let paneQueries = 0
+  on('ui.panes', () => {
+    paneQueries += 1
+    return { value: pane ? [pane] : [] }
+  })
   on('ui.close', (_, e) => {
     closed.push(e.id)
     pane = undefined
@@ -65,6 +70,7 @@ const engine = ($: Engine, on: On) => {
         ...overrides,
       }
     },
+    paneQueries: () => paneQueries,
     /** A hot reload: old timers die (see `reloader`), $.state stays, session.start fires again. */
     reload: () => $.session.start(start),
   }
@@ -323,4 +329,91 @@ test('S5: a pane moved to a background tab during the fade is left open', async 
 
   expect(sim.closed).toHaveLength(0)
   expect(await bannerShown($)).toBe(false)
+})
+
+test('F14: a permission dialog during a turn offers the break at once, and only once', async ($, on) => {
+  const sim = engine($, on)
+  on('classic.PermissionRequest', () => ({}))
+  on('classic.Notification', () => ({}))
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await sim.clock.advance(2_000)
+
+  await $.classic.PermissionRequest({ tool_name: 'Bash', tool_input: { command: 'rm -rf build' } })
+  await sim.clock.settle()
+  expect(sim.toasts).toHaveLength(1)
+
+  await sim.clock.advance(THRESHOLD_MS) // the threshold timer was replaced by the early offer
+  expect(sim.toasts).toHaveLength(1)
+})
+
+test('F14: a permission dialog with no turn running offers nothing', async ($, on) => {
+  const sim = engine($, on)
+  on('classic.PermissionRequest', () => ({}))
+  await $.session.start(start)
+  await $.classic.PermissionRequest({ tool_name: 'Bash', tool_input: { command: 'ls' } })
+  await sim.clock.settle()
+
+  expect(sim.toasts).toHaveLength(0)
+})
+
+test('F14: a tool.check `ask` alone (auto mode, another plugin’s query) offers nothing', async ($, on) => {
+  const sim = engine($, on)
+  on('tool.check', () => ({ decision: 'ask' as const }))
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  expect((await $.tool.check({ tool: 'Bash', input: { command: 'ls' } })).decision).toBe('ask')
+  await sim.clock.settle()
+
+  expect(sim.toasts).toHaveLength(0)
+})
+
+test('F14: only a permission_prompt notification counts', async ($, on) => {
+  const sim = engine($, on)
+  on('classic.Notification', () => ({}))
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.classic.Notification({ message: 'idle', notification_type: 'idle_prompt' })
+  await sim.clock.settle()
+  expect(sim.toasts).toHaveLength(0)
+
+  await $.classic.Notification({
+    message: 'Claude needs your permission',
+    notification_type: 'permission_prompt',
+  })
+  await sim.clock.settle()
+  expect(sim.toasts).toHaveLength(1)
+})
+
+test(
+  'HIGH: a 0 ms fade-out never spins while the pane holds the keyboard',
+  { options: { fade_out_delay_ms: 0 } },
+  async ($, on) => {
+    const sim = engine($, on)
+    sim.openPane({ isFocused: true })
+    await $.session.start(start)
+    await $.turn.start({ text: 'go', turnId: 't1' })
+    await $.turn.complete(complete('t1'))
+    const before = sim.paneQueries()
+    await sim.clock.advance(10_000)
+
+    expect(sim.paneQueries() - before).toBeLessThanOrEqual(12)
+    expect(sim.closed).toHaveLength(0)
+  },
+)
+
+test('F14: the dialog and its notification together still offer once', async ($, on) => {
+  const sim = engine($, on)
+  on('classic.PermissionRequest', () => ({}))
+  on('classic.Notification', () => ({}))
+  await $.session.start(start)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await $.classic.PermissionRequest({ tool_name: 'Bash', tool_input: { command: 'rm -rf build' } })
+  await $.classic.Notification({
+    message: 'Claude needs your permission',
+    notification_type: 'permission_prompt',
+  })
+  await sim.clock.settle()
+
+  expect(sim.toasts).toHaveLength(1)
 })

@@ -56,11 +56,11 @@
   - F3/F4/F7 구현 노트: 상태 전이는 `transition(from,to)`(versioned `update` 안에서 확인+쓰기)로만 한다 — 늦게 깬 타이머가 다른 훅의 전이를 덮지 않게. 배너·자동 닫기는 `isShown && isPlaced`인 Pane에만, 배너는 `reason === 'answer'`일 때만. 미확인: `i18n.ts`만 저장했을 때 `session.start`가 다시 오는지(d.ts: "changed modules only") — 데스크탑 수동 확인 필요
 - [x] F8 (P1) Memory Match — 8쌍 16장, Button 카드, 불일치 되돌리기 지연은 `$.clock.after`, 소요 시간 표시 (done · verified: tests/games.test.ts(시드 고정) + games-ui.test.ts 3표면, 600ms 뒤집기, 소요 시간 tick, mutation check, code-reviewer 2차 APPROVE · 원본과 차이: 시간은 첫 뒤집기부터, 불일치 대기 중 누르면 잠금 대신 정리 후 진행, 셔플은 Fisher–Yates)
 - [x] F9 (P1) Gomoku 9×9 vs AI — `createBoard / checkWin / evaluateLine / scorePosition / aiMove` 순수 로직 포팅, Button 격자 (done · verified: games.test.ts — 원본 evaluateLine 점수표, 즉승 수 선택, 4목 차단, 빈 판 중앙, 내 수 승리 시 AI 미착수 · 원본과 차이: AI 응수를 150ms 지연 없이 같은 state write로(재로드에 반쯤 둔 턴이 안 남게), 돌은 ASCII `+ X O`(CJK 터미널에서 `·●○`가 2칸 폭))
-- [ ] F10 (P2) Minesweeper 8×8 / 지뢰 10 — 열기와 깃발 모드 토글 Button, flood fill, 승패 판정
+- [x] F10 (P2) Minesweeper 8×8 / 지뢰 10 — 열기와 깃발 모드 토글 Button, flood fill, 승패 판정 (done · verified: tests/minesweeper.test.ts(시드·그림 보드: 안전 3×3 내부·모서리, 개수, flood fill, 승패, 깃발, 상수 난수) + games-ui.test.ts 3표면, code-reviewer APPROVE · 원본과 차이: 우클릭 대신 열기/깃발 모드 버튼, 첫 오픈 전 깃발은 유지(원본은 버리고 카운트만 남김), ASCII `# F * .`)
 - [x] F11 (P1) 게임 탭 — 게임 선택기(진입 시 랜덤 시작), 새 게임 버튼, 진행 상태 보존 (done · verified: games-ui.test.ts — 첫 진입 랜덤 게임 유지, 게임별 보드 보존, New game, 이미 games 탭으로 열려도 게임이 비지 않음 · Minesweeper는 F10에서 선택기에 추가)
-- [ ] F12 (P2) `userConfig` — threshold_seconds, language(en/ko 선택), rotation_seconds, fade_out_delay_ms (기존 `config.toml` 대응)
-- [ ] F13 (P2) Pane 안 언어 토글(EN ↔ KO) — `$.store` 오버라이드
-- [ ] F14 (P2) 권한 프롬프트 / idle 알림 시 즉시 휴식 제안(기존 Notification 훅과 동등). F1(b) 결과에 따라 보류 가능
+- [x] F12 (P2) `userConfig` — threshold_seconds, language(en/ko 선택), rotation_seconds, fade_out_delay_ms (기존 `config.toml` 대응) (done · verified: tests/settings.test.ts(기본값·클램프) + language.test.ts/lifecycle.test.ts에서 `test(name, { options })`로 threshold·rotation·language·fade 0ms 적용 확인 — 2.1.286 CLI 필요(E1) · 클램프: threshold 1–3600s, rotation 5–3600s, fade 0–60000ms, 포커스 중 fade 재확인은 최소 1s)
+- [x] F13 (P2) Pane 안 언어 토글(EN ↔ KO) — `$.store` 오버라이드 (done · verified: language.test.ts — 토글 시 문구·GeekNews·맨 위 재시작·세션 간 유지, 빠른 두 번 누름, 로딩 중 재로드에도 유지, 한국어 시간 표기 · 명령 설명은 1회 등록이라 영어 유지)
+- [x] F14 (P2) 권한 프롬프트 / idle 알림 시 즉시 휴식 제안(기존 Notification 훅과 동등). F1(b) 결과에 따라 보류 가능 (done · verified: lifecycle.test.ts — `classic.PermissionRequest`(권한 창 표시 직전)와 Notification `permission_prompt`로 즉시 제안, 둘이 함께 와도 1회, 턴 없으면 없음 · `tool.check`의 `ask`는 쓰지 않음(auto/dontAsk·다른 플러그인 조회에서 창 없이도 ask) · 미확인: 데스크탑이 classic.PermissionRequest를 실제로 올리는지 — 수동 확인 필요)
 - [ ] F15 (P3) 레거시 공존 경고 — `session.start`에서 `$.fs`로 `~/.claude/settings.json`을 읽어 `streambreak` 훅이 남아 있으면 토스트 1회(팝업 이중 방지 안내)
 - [ ] F16 (P3) 배포 및 문서 — 레포 루트 `.claude-plugin/marketplace.json`(source `./mod/streambreak`)으로 정본 기반 설치 경로를 만들고, `claude plugin marketplace add`(로컬 경로와 `rhc98/streambreak` 둘 다) 후 `claude plugin install`이 되는지 확인, README.md / README.ko.md에 Mod 섹션, AGENTS.md 갱신, 릴리스 태그 규칙(`claude plugin tag`) 기록
 
@@ -73,7 +73,7 @@
 - [x] S3 서브에이전트 턴(`agentId` 있음)의 `turn.complete`는 무시한다 — 메인 턴의 타이머와 배너에 영향이 없어야 한다 (F3 × F7) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
 - [x] S4 threshold 전에 `turn.complete`가 오면 대기 중인 타이머를 취소해 늦은 토스트가 나오지 않게 하고, `isAborted`(중단)이면 배너 없이 조용히 정리한다 (F3 × F7) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
 - [x] S5 Pane이 놓이지 못하면(`isPlaced:false`, 구형 데스크탑 등) 열렸다고 가정하지 않고 사유와 대안을 토스트로 안내하며, 재시도 루프는 돌지 않는다 (F4) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
-- [/] S6 언어가 바뀌면(Pane 토글 또는 설정 변경) 피드 캐시는 언어별로 분리하고 인덱스를 0으로 리셋하고 새 언어로 다시 fetch한다(기존 `onToggleLanguage`와 동일). 우선순위는 Pane 토글(`$.store`) > `userConfig`이고, 설정 메뉴에서 값을 바꾸면 오버라이드를 지운다 (F5 × F6 × F12 × F13) (in-progress · 캐시 키는 이미 언어별 `feed:<lang>`, 새 항목이면 인덱스 0. 토글/설정은 F12·F13 대기)
+- [x] S6 언어가 바뀌면(Pane 토글 또는 설정 변경) 피드 캐시는 언어별로 분리하고 인덱스를 0으로 리셋하고 새 언어로 다시 fetch한다(기존 `onToggleLanguage`와 동일). 우선순위는 Pane 토글(`$.store`) > `userConfig`이고, 설정 메뉴에서 값을 바꾸면 오버라이드를 지운다 (F5 × F6 × F12 × F13) (done · verified: settings.test.ts resolveLanguage 표, language.test.ts — 설정 변경 시 오버라이드 삭제(다음 로드까지), 진행 중 fetch 결과는 언어가 바뀌었으면 publish 안 함(캐시·네트워크 둘 다), 저장소 장애에도 설정 언어 적용 · 설정 메뉴 변경이 session.start를 다시 부르는지는 수동 확인)
 - [x] S7 핫리로드나 설정 변경으로 모듈이 재로드되면 모듈 변수와 `$.clock` 타이머가 사라지므로, `session.start`에서 phase, 로테이션 타이머, 대기 중 전이를 재무장하거나 정리한다. `$.state`의 게임 보드는 유지한다 (F3 × F6 × F8) (done · verified: `claude plugin test` 22/22 + mutation check, code-reviewer APPROVE)
 - [x] S8 피드 fetch가 실패하거나 오프라인이면 마지막 캐시로 로테이션을 계속하고 "오프라인"을 표기한다. TTL 전에는 재시도하지 않고, 캐시도 없으면 빈 상태 문구를 보여준다 (F5 × F6) (done · verified: news.test.ts 오프라인+캐시/무캐시, HTML 200, 응답 없는 소스 10s 타임아웃 · 계획과 차이: 캐시가 비었을 때만 TTL 대신 60s 후 재시도(EMPTY_RETRY_MS) — 오프라인 기상 직후 30분 공백 방지)
 - [x] S9 타이머성 게임 전이(Memory 불일치 되돌리기, 소요 시간 tick)가 Pane 닫힘과 겹쳐도 카드가 뒤집힌 채 굳지 않는다 — 닫히면 tick을 멈추고, 재오픈이나 재로드 시 대기 전이를 해소한다 (F8 × F4 × S7) (done · verified: 불일치 쌍을 state에 두고 재로드·재오픈·다음 누름에서 정리, 활성 탭/게임 재누름과 탭 왕복 회귀 테스트, 소요 시간 tick은 보이는 Pane + games 탭 + 진행 중일 때만 · 사람이 닫는 경로는 kit에 ui.close가 없어 수동 확인 대상)
@@ -85,9 +85,9 @@
 
 - [ ] V1 `claude plugin validate mod/streambreak` — 에러 0 (매니페스트, hooks 모듈, `$.state` 키가 `types/index.d.ts` 계약과 일치)
 - [ ] V2 타입체크 — `/plugin-types`로 `.claude/types` 생성 후 d.ts 헤더의 tsconfig로 `tsc --noEmit` 통과
-- [/] V3 `claude plugin test` 순수 로직 — Gomoku(즉승 수 선택, 차단), Minesweeper(flood fill, 승패), Memory(일치 / 불일치), 피드 파서(고정 픽스처 3종 → `{title,url,source,icon,published_at}`, 정렬, max_items 10) (in-progress · 피드 파서, Memory(일치/불일치/완료), Gomoku(즉승/차단) 완료: tests/feed.test.ts, tests/games.test.ts. Minesweeper는 F10 대기)
+- [x] V3 `claude plugin test` 순수 로직 — Gomoku(즉승 수 선택, 차단), Minesweeper(flood fill, 승패), Memory(일치 / 불일치), 피드 파서(고정 픽스처 3종 → `{title,url,source,icon,published_at}`, 정렬, max_items 10) (done · verified: tests/feed.test.ts, games.test.ts, minesweeper.test.ts, settings.test.ts — 2.1.286 CLI로 전부 통과)
 - [x] V4 `claude plugin test` 훅 시나리오 — 가짜 시계로 S2–S4, S7, S10 재현: threshold 후 토스트 1회, 조기 `turn.complete` / 중단 시 토스트 없음, 서브에이전트 `turn.complete` 무시, 재로드 후 재무장, `/clear` 후 phase 초기화 (done · verified: tests/lifecycle.test.ts 17건; 테스트 `$`에는 state 명사가 없어 토스트/닫힘/배너로 판정, 재로드는 inline `reloader` 플러그인이 이전 clock.after를 거부해 모사)
-- [/] V5 `claude plugin test` UI 마운트를 `['terminal','desktop','mobile']` 모두에서 통과 — Pane 렌더, 탭 전환, Button 동작, 트리 검증 거부 없음 (S1, S5, S6, S8, S9) (in-progress · 3표면: pane.test.ts 탭·닫기·F4·S5, news.test.ts 카드(S8 포함), games-ui.test.ts 게임 조작(S1, S9). S6은 F12·F13 대기)
+- [x] V5 `claude plugin test` UI 마운트를 `['terminal','desktop','mobile']` 모두에서 통과 — Pane 렌더, 탭 전환, Button 동작, 트리 검증 거부 없음 (S1, S5, S6, S8, S9) (done · verified: pane/news/games-ui.test.ts가 terminal·desktop·mobile 3표면 마운트에서 탭·버튼·게임·카드 통과(S1, S5, S8, S9). S6는 terminal 마운트로 검증)
 - [ ] V6 헤드리스 로드 스모크 — `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude -p --plugin-dir mod/streambreak "hi"` 종료코드 0, stderr에 load / refused 문구 없음
 - [ ] V7 기존 앱 회귀 없음 — `bun run check && bun run test` 및 `cargo test --manifest-path src-tauri/Cargo.toml` 통과(vitest가 `mod/**`를 줍지 않음 포함, biome에 `mod/**`를 넣었다면 그것도 통과)
 - [ ] V8 Tauri 앱 무변경 — `git diff --stat master..HEAD -- src src-tauri`가 비어 있음
@@ -99,7 +99,7 @@
 
 ## 테스트 환경
 
-- [ ] E1 빌드 차이 확인 — 셸 `claude --version`은 2.1.282이고 데스크탑 번들 엔진(플러그인 작성 스킬의 d.ts 기준)은 2.1.286이다. 둘 다 `claude plugin validate / test`는 있다(셸에서 확인). d.ts는 2.1.286 기준이므로 셸 쪽 동작 차이에 주의하고, 구형 데스크탑이면 `isPlaced:false` 사유가 나온다
+- [x] E1 빌드 차이 확인 — 셸 `claude --version`은 2.1.282이고 데스크탑 번들 엔진(플러그인 작성 스킬의 d.ts 기준)은 2.1.286이다. 둘 다 `claude plugin validate / test`는 있다(셸에서 확인). d.ts는 2.1.286 기준이므로 셸 쪽 동작 차이에 주의하고, 구형 데스크탑이면 `isPlaced:false` 사유가 나온다 (done · verified: 셸 2.1.282는 `claude plugin test`에서 `test(name, { options })`를 무시해 userConfig 테스트 4건 실패, 데스크탑 번들 2.1.286 바이너리로는 전부 통과 → 플러그인 테스트·validate는 2.1.286 바이너리로 돌린다(AGENTS.md). validate는 두 버전 모두 통과)
 - [ ] E2 개발 로드 준비 — 새 세션에서 `plugin-authoring` 스킬을 다시 로드(세션마다 `~/.claude/dev-mods/<session-id>/` 폴더가 새로 생김)하고, 정본 `mod/streambreak`를 그 폴더에 링크한 뒤 뜨는 "Enable hot reloading for this session?"에 사용자가 `Enable for this session` 응답. 링크가 안 먹으면 F1(c)의 대안을 쓴다
 - [x] E3 네트워크 — `curl -sI https://hnrss.org/frontpage https://techcrunch.com/feed/ https://news.hada.io/rss/news` 가 모두 200 (done · verified: 2026-10-03 curl 3개 모두 200)
 - [x] E4 피드 픽스처 확보 — 위 3개 피드의 샘플 XML을 `mod/streambreak/fixtures/`에 저장 (V3 입력) (done · 계획과 차이: 제3자 기사 본문을 레포에 넣지 않으려고 실제 피드 구조(CDATA, 숫자 엔티티, Atom 링크, +09:00)를 그대로 따른 합성 픽스처를 `tests/fixtures.ts`에 두었다. 실제 사본은 레포 밖 scratch에서 파서 검증용으로만 사용)

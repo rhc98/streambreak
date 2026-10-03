@@ -91,7 +91,11 @@ const labels = async (pane: Pane, prefix: string) => {
   )
 }
 
-const openGame = async ($: Engine, game: 'memory' | 'gomoku', surface: Surface = 'terminal') => {
+const openGame = async (
+  $: Engine,
+  game: 'memory' | 'gomoku' | 'minesweeper',
+  surface: Surface = 'terminal',
+) => {
   await open($)
   const pane = await mount($, surface)
   await pane.press({ key: 'tab:games' })
@@ -141,7 +145,7 @@ test('F11: the games tab opens on a game the first time and keeps it', async ($,
     b => b.key?.startsWith('game:') && b.props.variant === 'primary',
   )?.key
 
-  expect(['game:memory', 'game:gomoku']).toContain(picked)
+  expect(['game:memory', 'game:minesweeper', 'game:gomoku']).toContain(picked)
   await pane.press({ key: 'tab:news' })
   await pane.press({ key: 'tab:games' })
   expect((await pane.findAll({ type: 'Button' })).find(b => b.key === picked)?.props.variant).toBe(
@@ -364,3 +368,24 @@ test('F8: re-flipping the same pair gives it a full 600 ms again', async ($, on)
   await sim.clock.advance(400)
   expect(await faceUp(pane)).toBe(0)
 })
+
+for (const surface of SURFACES) {
+  test(`V5 ${surface}: Minesweeper opens a safe area first and flags in flag mode`, async ($, on) => {
+    engine(on)
+    const pane = await openGame($, 'minesweeper', surface)
+    expect([...(await labels(pane, 'mines:')).values()].filter(l => l === '#')).toHaveLength(64)
+
+    await pane.press({ key: 'mines:4:4' })
+    const opened = await labels(pane, 'mines:')
+    expect(opened.get('mines:4:4')).toBe('.') // the 3×3 around the first open never holds a mine
+    expect([...opened.values()].some(l => l === '*')).toBe(false)
+
+    const hidden = [...opened.entries()].find(
+      ([key, label]) => key !== 'mines:mode' && label === '#',
+    )?.[0]
+    expect(hidden).toBeDefined()
+    await pane.press({ key: 'mines:mode' })
+    await pane.press({ key: hidden as string })
+    expect((await labels(pane, 'mines:')).get(hidden as string)).toBe('F')
+  })
+}

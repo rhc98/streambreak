@@ -8,6 +8,8 @@ export type Phase = 'idle' | 'working' | 'suggested' | 'done'
 
 export type Tab = 'news' | 'games'
 
+export type Language = 'en' | 'ko'
+
 export type GameKind = 'memory' | 'gomoku' | 'minesweeper'
 
 /** One Memory Match card; `symbol` indexes the 8 pair symbols. */
@@ -36,6 +38,22 @@ export type GomokuState = {
   lastMove: [number, number] | null
 }
 
+export type MineCell = {
+  isMine: boolean
+  isRevealed: boolean
+  isFlagged: boolean
+  adjacent: number
+}
+
+/** A Minesweeper game. Mines are laid on the first open (`isLaid`), away from that cell. */
+export type MinesState = {
+  board: MineCell[][]
+  status: 'playing' | 'won' | 'lost'
+  isLaid: boolean
+  /** What a press on a hidden cell does: open it, or toggle its flag. */
+  mode: 'open' | 'flag'
+}
+
 /** One headline, the Tauri app's ContentItem shape. `published_at` is ISO 8601, or "" undated. */
 export type NewsItem = {
   title: string
@@ -57,6 +75,8 @@ declare module 'claude-code' {
       /** When that turn started (ms since epoch), so a reload can re-arm the break timer. */
       turnStartedAt: number | null
       tab: Tab
+      /** The effective language: the pane toggle's override, else the userConfig setting (S6). */
+      language: Language
       news: NewsFeed
       /** The first visible card; advances every rotation tick. */
       newsIndex: number
@@ -65,6 +85,7 @@ declare module 'claude-code' {
       /** Each game's board survives tab switches, pane closes, reloads and /clear (S1, S10). */
       memory: MemoryState | null
       gomoku: GomokuState | null
+      minesweeper: MinesState | null
     }
   }
 }

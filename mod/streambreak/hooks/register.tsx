@@ -1,7 +1,16 @@
 import type { EngineInterface, Register, UiPane } from 'claude-code'
 import { atom, read, update } from 'claude-code'
 
-import type { GameKind, GomokuState, MemoryState, NewsFeed, Phase, Tab } from '../types'
+import type {
+  GameKind,
+  GomokuState,
+  Language,
+  MemoryState,
+  MinesState,
+  NewsFeed,
+  Phase,
+  Tab,
+} from '../types'
 import {
   asFeedCache,
   cacheKey,
@@ -18,18 +27,19 @@ import {
 } from './feed'
 import { newGomoku, playTurn } from './games/gomoku'
 import { FLIP_BACK_MS, flip, newMemory, settleMismatch } from './games/memory'
-import { AVAILABLE_GAMES, gameSelector, gomokuView, memoryView } from './games/views'
-import { type Language, strings } from './i18n'
+import { newMines, press as pressMine, toggleMode } from './games/minesweeper'
+import { AVAILABLE_GAMES, gameSelector, gomokuView, memoryView, minesView } from './games/views'
+import { strings } from './i18n'
+import { DEFAULT_SETTINGS, resolveLanguage, type Settings, settingsFrom } from './settings'
 
 // $.state refs must be declared in the file that reads or writes them (validate's scan rule),
 // so every state access stays in this file; other modules hold pure logic and drawing.
 const PANE = 'streambreak'
-// Legacy app defaults (config.toml); userConfig takes over in F12.
-const THRESHOLD_MS = 10_000
-const FADE_OUT_MS = 3_000
-const ROTATION_MS = 15_000
-const LANGUAGE: Language = 'en'
-const t = strings(LANGUAGE)
+// F12: the userConfig values (legacy config.toml defaults), set by register() on every load.
+let settings: Settings = DEFAULT_SETTINGS
+// $.store keys: the pane toggle's language override, and the setting it was made against (S6).
+const LANGUAGE_OVERRIDE = 'language'
+const LANGUAGE_CONFIGURED = 'config:language'
 
 const phase = atom({ plugin: 'streambreak', key: 'phase' } as const, 'idle' as Phase)
 const turnId = atom({ plugin: 'streambreak', key: 'turnId' } as const, null as string | null)
@@ -38,6 +48,7 @@ const turnStartedAt = atom(
   null as number | null,
 )
 const tab = atom({ plugin: 'streambreak', key: 'tab' } as const, 'news' as Tab)
+const language = atom({ plugin: 'streambreak', key: 'language' } as const, 'en' as Language)
 const news = atom(
   { plugin: 'streambreak', key: 'news' } as const,
   {
@@ -50,6 +61,10 @@ const newsIndex = atom({ plugin: 'streambreak', key: 'newsIndex' } as const, 0)
 const game = atom({ plugin: 'streambreak', key: 'game' } as const, null as GameKind | null)
 const memory = atom({ plugin: 'streambreak', key: 'memory' } as const, null as MemoryState | null)
 const gomoku = atom({ plugin: 'streambreak', key: 'gomoku' } as const, null as GomokuState | null)
+const minesweeper = atom(
+  { plugin: 'streambreak', key: 'minesweeper' } as const,
+  null as MinesState | null,
+)
 
 // Timers die with the module on a reload; session.start re-arms them from $.state (S7).
 type Timer = { cancel: () => void }
@@ -61,6 +76,8 @@ let flipBackTimer: Timer | undefined
 let elapsedTimer: Timer | undefined
 
 const ourPane = async ($: EngineInterface) => (await $.ui.panes()).find(pane => pane.id === PANE)
+const stringsFor = async ($: EngineInterface) => strings(await read($, language))
+
 // The person can see it: placed (not waiting on width or an older desktop) and the front tab.
 const isVisible = (pane: UiPane | undefined) => pane?.isShown === true && pane.isPlaced
 
@@ -103,13 +120,33 @@ const suggest = async ($: EngineInterface, id: string) => {
   const pane = await ourPane($)
   // S2: no toast over a visible pane; and none if the turn ended while we looked.
   if (isVisible(pane) || (await read($, phase)) !== 'suggested') return
-  $.ui.toast(t.suggest)
+  $.ui.toast((await stringsFor($)).suggest)
+}
+
+// F14: Claude is waiting on the person (a permission prompt): offer the break now, not at the
+// threshold. Same once-per-turn transition as the timer, so it never toasts twice.
+const offerNow = async ($: EngineInterface) => {
+  const id = await read($, turnId)
+  if (id === null) return
+  suggestTimer?.cancel() // suggest() itself refuses anything but a 'working' turn
+  await suggest($, id)
+}
+
+// From a timer, so the permission decision the hook passes on is never held up by our work.
+const offerSoon = ($: EngineInterface) => {
+  $.clock.after(0, () => {
+    offerNow($).catch(error => debug($, `early break offer failed: ${error}`))
+  })
 }
 
 // F7: after the banner shows, close the pane unless the person holds its keyboard (S1); then poll.
-const armFade = ($: EngineInterface) => {
+// While the pane holds the keyboard the fade polls; never faster than this, even with a 0 ms
+// fade-out setting (that would spin on $.ui.panes()).
+const FADE_POLL_MS = 1_000
+
+const armFade = ($: EngineInterface, delayMs = settings.fadeOutMs) => {
   fadeTimer?.cancel()
-  fadeTimer = $.clock.after(FADE_OUT_MS, () => {
+  fadeTimer = $.clock.after(delayMs, () => {
     fade($).catch(async error => {
       debug($, `banner fade failed: ${error}`)
       await transition($, 'done', 'idle').catch(() => undefined)
@@ -132,7 +169,8 @@ const closePane = async ($: EngineInterface) => {
 const fade = async ($: EngineInterface) => {
   if ((await read($, phase)) !== 'done') return
   const pane = await ourPane($)
-  if (isVisible(pane) && pane?.isFocused) return armFade($)
+  if (isVisible(pane) && pane?.isFocused)
+    return armFade($, Math.max(settings.fadeOutMs, FADE_POLL_MS))
   // Moved to a background tab (or gone) meanwhile: drop the banner but never close it (S5).
   const isClosing = (await transition($, 'done', 'idle')) && isVisible(pane)
   if (isClosing) await closePane($)
@@ -174,7 +212,9 @@ const sameFeed = (a: NewsFeed, b: NewsFeed) =>
 
 // Writes the feed only when it changed (a tick that hit the cache redraws nothing); new items
 // start the rotation from the top.
-const publish = async ($: EngineInterface, next: NewsFeed) => {
+// Only for the language it was fetched in: a toggle meanwhile has cleared the cards for its own.
+const publish = async ($: EngineInterface, lang: Language, next: NewsFeed) => {
+  if ((await read($, language)) !== lang) return
   let isNewItems = false
   await update($, news, current => {
     if (sameFeed(current, next)) return current
@@ -190,18 +230,23 @@ const publish = async ($: EngineInterface, next: NewsFeed) => {
 const refreshNews = ($: EngineInterface) => {
   refreshing ??= (async () => {
     const now = await $.clock.now()
-    const cached = asFeedCache(await $.store.get(cacheKey(LANGUAGE)))
+    const lang = await read($, language)
+    const cached = asFeedCache(await $.store.get(cacheKey(lang)))
     if (isFresh(cached, now)) {
-      return publish($, { items: cached.items, isOffline: cached.isOffline, isLoading: false })
+      return publish($, lang, {
+        items: cached.items,
+        isOffline: cached.isOffline,
+        isLoading: false,
+      })
     }
     // "Loading" only when the network is really asked and there is nothing to show meanwhile.
     if ((await read($, news)).items.length === 0) {
       await update($, news, feed => (feed.isLoading ? feed : { ...feed, isLoading: true }))
     }
-    const lists = await Promise.all(FEEDS[LANGUAGE].map(source => fetchSource($, source)))
+    const lists = await Promise.all(FEEDS[lang].map(source => fetchSource($, source)))
     const next = settleFetches(lists, cached, now)
-    await $.store.set(cacheKey(LANGUAGE), next)
-    await publish($, { items: next.items, isOffline: next.isOffline, isLoading: false })
+    await $.store.set(cacheKey(lang), next)
+    await publish($, lang, { items: next.items, isOffline: next.isOffline, isLoading: false })
   })()
     .catch(async error => {
       debug($, `news refresh failed: ${error}`)
@@ -220,7 +265,7 @@ const refreshNews = ($: EngineInterface) => {
 // A close we never heard of (the engine unloading the pane) ends the rotation at the next tick.
 const startRotation = ($: EngineInterface) => {
   rotationTimer?.cancel()
-  const self: Timer = $.clock.every(ROTATION_MS, () => {
+  const self: Timer = $.clock.every(settings.rotationMs, () => {
     const tick = async () => {
       // Only this rotation may stop itself: a reopen meanwhile started a newer one.
       if (!(await ourPane($))) return rotationTimer === self ? stopRotation() : self.cancel()
@@ -262,6 +307,9 @@ const startGame = async ($: EngineInterface, kind: GameKind, isFresh: boolean) =
   if (kind === 'gomoku') {
     await update($, gomoku, current => (current && !isFresh ? current : newGomoku()))
   }
+  if (kind === 'minesweeper') {
+    await update($, minesweeper, current => (current && !isFresh ? current : newMines()))
+  }
   await syncElapsedClock($)
 }
 
@@ -292,6 +340,13 @@ const flipCard = async ($: EngineInterface, index: number) => {
   }
   await syncElapsedClock($)
 }
+
+// F10: one press opens or flags, per the mode; the first open lays the mines.
+const pressMines = ($: EngineInterface, r: number, c: number) =>
+  update($, minesweeper, current => (current ? pressMine(current, r, c) : current))
+
+const toggleMinesMode = ($: EngineInterface) =>
+  update($, minesweeper, current => (current ? toggleMode(current) : current))
 
 // F9: the person's stone and the AI's reply land in one write.
 const playGomoku = ($: EngineInterface, r: number, c: number) =>
@@ -326,7 +381,78 @@ const stopElapsedClock = () => {
   elapsedTimer = undefined
 }
 
-export const register: Register = on => {
+// S6: a language change starts the news over in that language (cache per language), like the
+// Tauri app's onToggleLanguage. A refresh still in flight for the old one is waited out first.
+const restartNews = async ($: EngineInterface) => {
+  await update($, newsIndex, () => 0)
+  await update($, news, () => ({ items: [], isOffline: false, isLoading: false }))
+  if (!(await ourPane($))) return // the next open fetches
+  await refreshing?.catch(() => undefined)
+  await refreshNews($)
+}
+
+const setLanguage = async ($: EngineInterface, next: Language) => {
+  let isChanged = false
+  await update($, language, current => {
+    isChanged = current !== next
+    return isChanged ? next : current
+  })
+  return isChanged
+}
+
+// Best effort: a store that fails must not stop the language the person sees from changing.
+const storeQuietly = ($: EngineInterface, write: () => Promise<unknown>) =>
+  write().catch(error => debug($, `store write failed: ${error}`))
+
+// F13: the pane's EN ↔ KO toggle. The flip happens inside one update, so two quick presses land
+// as two flips; then it is saved as an override of the setting (setting first, so a half-done
+// save never leaves an override without the setting it was made against).
+const toggleLanguage = async ($: EngineInterface) => {
+  let next: Language = 'en'
+  await update($, language, current => {
+    next = current === 'en' ? 'ko' : 'en'
+    return next
+  })
+  // Saved before the fetch: an exit or reload while the news loads must not undo the press.
+  await storeQuietly($, () => $.store.set(LANGUAGE_CONFIGURED, settings.language))
+  await storeQuietly($, () => $.store.set(LANGUAGE_OVERRIDE, next))
+  await restartNews($)
+}
+
+// At every load: the setting, the override, and whether the menu changed the setting since (S6).
+// An unreadable store counts as empty, so the setting still applies.
+const loadLanguage = async ($: EngineInterface) => {
+  const UNREAD = Symbol('unread')
+  const readQuietly = (key: string) => $.store.get(key).catch(() => UNREAD)
+  const configured = await readQuietly(LANGUAGE_CONFIGURED)
+  const override = await readQuietly(LANGUAGE_OVERRIDE)
+  const { language: effective, isOverrideCleared } = resolveLanguage(
+    settings.language,
+    configured === UNREAD ? undefined : configured,
+    override === UNREAD ? undefined : override,
+  )
+  const isChanged = await setLanguage($, effective)
+  const hasPane = (await ourPane($)) !== undefined
+  // The news follows from a timer: session.start must not wait on the network.
+  if (isChanged || hasPane) {
+    $.clock.after(0, () => {
+      // A reload mid-switch may have dropped its fetch, so an open pane refreshes either way.
+      ;(isChanged ? restartNews($) : refreshNews($)).catch(error =>
+        debug($, `news after language load failed: ${error}`),
+      )
+    })
+  }
+  if (isOverrideCleared) await storeQuietly($, () => $.store.delete(LANGUAGE_OVERRIDE))
+  // Only when we know what was stored: recording the setting over an unread value could hide a
+  // later menu change behind a stale override for good.
+  if (configured !== UNREAD) {
+    await storeQuietly($, () => $.store.set(LANGUAGE_CONFIGURED, settings.language))
+  }
+}
+
+export const register: Register = (on, options) => {
+  settings = settingsFrom(options)
+
   on('session.start', async ($, e, next) => {
     await $.command.register({ name: 'streambreak', description: 'Open the streambreak pane' })
 
@@ -338,11 +464,14 @@ export const register: Register = on => {
     const id = await read($, turnId)
     const startedAt = await read($, turnStartedAt)
     if (current === 'working' && id !== null && startedAt !== null) {
-      armSuggest($, id, THRESHOLD_MS - ((await $.clock.now()) - startedAt))
+      armSuggest($, id, settings.thresholdMs - ((await $.clock.now()) - startedAt))
     }
     if (current === 'done') armFade($)
     if (await ourPane($)) startRotation($)
     await syncElapsedClock($)
+
+    // Last, and on its own: a store failure here must not cost the re-arming above.
+    await loadLanguage($).catch(error => debug($, `language load failed: ${error}`))
 
     return next(e)
   })
@@ -364,7 +493,7 @@ export const register: Register = on => {
     await update($, turnId, () => e.turnId)
     await update($, turnStartedAt, () => now)
     await update($, phase, () => 'working' as Phase)
-    armSuggest($, e.turnId, THRESHOLD_MS)
+    armSuggest($, e.turnId, settings.thresholdMs)
 
     return next(e)
   })
@@ -388,6 +517,26 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // F14: a permission dialog is about to be shown. Not `tool.check`'s `ask`: auto mode, dontAsk and
+  // other plugins settle many asks with no dialog, and a plugin's own `$.tool.check` query raises
+  // it too. The decision is passed on untouched; nothing of ours may throw into it.
+  on('classic.PermissionRequest', async ($, e, next) => {
+    try {
+      offerSoon($)
+    } catch {}
+
+    return next(e)
+  })
+
+  // The terminal also announces the prompt as a notification; the transition dedupes the two.
+  on('classic.Notification', async ($, e, next) => {
+    try {
+      if (e.notification_type === 'permission_prompt') offerSoon($)
+    } catch {}
+
+    return next(e)
+  })
+
   on('ui.close', { id: PANE }, async ($, e, next) => {
     await afterClose($)
 
@@ -403,6 +552,7 @@ export const register: Register = on => {
     await syncElapsedClock($)
     // From a timer, not this dispatch: work a finished command dispatch left running may be dropped.
     $.clock.after(0, () => void refreshNews($))
+    const t = await stringsFor($)
     if (opened.isPlaced) return { text: t.opened }
 
     $.ui.toast(t.notPlaced(opened.reason))
@@ -415,18 +565,20 @@ export const register: Register = on => {
     const { Box, Text, Button, Link } = els
     // Each read subscribes this drawing: read only what the shown tab draws, so a news tick never
     // redraws an 81-button board and a game move never redraws the news.
-    const [currentPhase, currentTab, now] = await Promise.all([
+    const [currentPhase, currentTab, now, currentLanguage] = await Promise.all([
       read($, phase),
       read($, tab),
       $.clock.now(),
+      read($, language),
     ])
+    const t = strings(currentLanguage)
     const isNews = currentTab === 'news'
     const [feed, index] = isNews
       ? await Promise.all([read($, news), read($, newsIndex)])
       : [null, 0]
-    const [currentGame, memoryState, gomokuState] = isNews
-      ? [null, null, null]
-      : await Promise.all([read($, game), read($, memory), read($, gomoku)])
+    const [currentGame, memoryState, gomokuState, minesState] = isNews
+      ? [null, null, null, null]
+      : await Promise.all([read($, game), read($, memory), read($, gomoku), read($, minesweeper)])
 
     // Handlers read what they need when pressed (another surface may have moved on since this
     // drawing) and send failures to the debug log.
@@ -469,6 +621,9 @@ export const register: Register = on => {
           >
             {t.games}
           </Button>
+          <Button key="lang" onPress={act('language', () => toggleLanguage($))}>
+            {t.switchLanguage}
+          </Button>
           <Button key="close" role="dismiss" onPress={act('close', () => closePane($))}>
             {t.close}
           </Button>
@@ -483,7 +638,7 @@ export const register: Register = on => {
               // Sanitized here, not only at parse time, so caches from older builds draw too (H1).
               const title = cleanText(`${position === 0 ? '›' : ' '} ${item.icon} ${item.title}`)
               const href = safeHref(item.url)
-              const ago = timeAgo(item.published_at, now)
+              const ago = timeAgo(item.published_at, now, t.ago)
               return (
                 <Box key={`card:${item.url || item.title}`} flexDirection="column">
                   {href ? <Link href={href} label={title} /> : <Text>{title}</Text>}
@@ -505,6 +660,14 @@ export const register: Register = on => {
               )
             ) : currentGame === 'gomoku' && gomokuState ? (
               gomokuView(els, t, gomokuState, (r, c) => act('move', () => playGomoku($, r, c))())
+            ) : currentGame === 'minesweeper' && minesState ? (
+              minesView(
+                els,
+                t,
+                minesState,
+                (r, c) => act('mines', () => pressMines($, r, c))(),
+                act('mines mode', () => toggleMinesMode($)),
+              )
             ) : (
               <Text dimColor>{t.gamesEmpty}</Text>
             )}

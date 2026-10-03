@@ -1,4 +1,6 @@
-export type Language = 'en' | 'ko'
+import type { Language } from '../types'
+
+export type { Language }
 
 const en = {
   // Desktop prefixes toasts with the plugin name, so toasts never repeat "streambreak".
@@ -10,6 +12,8 @@ const en = {
   news: 'News',
   games: 'Games',
   close: 'Close',
+  switchLanguage: '한국어',
+  ago: { justNow: 'just now', minutes: 'm', hours: 'h', days: 'd' },
   newsEmpty: 'No news yet.',
   loading: 'Loading news…',
   offline: 'Offline — showing the last saved news',
@@ -22,6 +26,10 @@ const en = {
   gomokuTurn: (lastAi: string | null) =>
     lastAi ? `AI played ${lastAi} — your turn (X)` : 'Your turn (X)',
   gomokuResult: { black: 'You win!', white: 'AI wins', draw: 'Draw' },
+  minesweeper: 'Mines',
+  minesStatus: (flagsLeft: number) => `Mines left ${flagsLeft}`,
+  minesResult: { won: 'Cleared!', lost: 'Boom — try again' },
+  minesMode: { open: 'Mode: open', flag: 'Mode: flag' },
 }
 
 const ko: typeof en = {
@@ -33,6 +41,8 @@ const ko: typeof en = {
   news: '뉴스',
   games: '게임',
   close: '닫기',
+  switchLanguage: 'English',
+  ago: { justNow: '방금', minutes: '분', hours: '시간', days: '일' },
   newsEmpty: '아직 뉴스가 없습니다.',
   loading: '뉴스를 불러오는 중…',
   offline: '오프라인 — 마지막으로 저장된 뉴스입니다',
@@ -45,6 +55,10 @@ const ko: typeof en = {
   gomokuTurn: (lastAi: string | null) =>
     lastAi ? `AI가 ${lastAi}에 둠 — 당신 차례 (X)` : '당신 차례 (X)',
   gomokuResult: { black: '승리!', white: 'AI 승리', draw: '무승부' },
+  minesweeper: '지뢰찾기',
+  minesStatus: (flagsLeft: number) => `남은 지뢰 ${flagsLeft}`,
+  minesResult: { won: '성공!', lost: '펑 — 다시 해 보세요' },
+  minesMode: { open: '모드: 열기', flag: '모드: 깃발' },
 }
 
 export type Strings = typeof en
