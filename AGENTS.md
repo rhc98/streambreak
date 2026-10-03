@@ -63,7 +63,7 @@ brew install streambreak
 
 ## Claude Mod (in progress)
 
-Port of streambreak to a Claude Mod (function-hooks plugin that draws a Pane/Toast inside Claude Code terminal and desktop). F1 spike done; F2 (skeleton) next.
+Port of streambreak to a Claude Mod (function-hooks plugin that draws a Pane/Toast inside Claude Code terminal and desktop). F1–F15 done, F16 in progress (GitHub install needs the branch on master). The plan records what is verified and what is still a manual check.
 
 - **Plan / progress SoT:** `plans/2026-10-03-streambreak-claude-mod-plan.md` (goalplan checklist). Read it first. Mark an item `[x]` only with a `verified:` basis.
 - **Canonical source:** `mod/streambreak/` in this repo (create it there directly). `~/.claude/dev-mods/<session-id>/…`, installed plugin caches and remote checkouts are derived copies — never edit them, and never commit absolute home paths.
@@ -74,4 +74,6 @@ Port of streambreak to a Claude Mod (function-hooks plugin that draws a Pane/Toa
 - **Test runner version:** run `claude plugin test` with the engine the desktop app ships (`~/Library/Application Support/Claude/claude-code/<version>/<build>/claude.app/Contents/MacOS/claude`, currently 2.1.286). The shell `claude` (2.1.282) ignores a test's `options`, so the userConfig tests fail there.
 - **Plugin tests:** the test `$` has no `state` or `ui.close`; assert what the person sees (toasts, mounted Pane, closes recorded by test hooks). Answer every call the plugin makes (`mock.clock`, `mock.store`, `on('http.fetch')`, `on('ui.log')` …) or the bottom hook throws. Fixtures are synthetic (no third-party feed content in the repo).
 - **Typecheck:** `tsc -p mod/streambreak` (its tsconfig extends `.claude-plugin/types/`, which the engine writes on load and self-gitignores).
+- **Distribution:** repo-root `.claude-plugin/marketplace.json` lists `./mod/streambreak`; `claude plugin marketplace add <repo or path>` then `claude plugin install streambreak@streambreak`. A local-path install copies the folder as it is on disk (untracked files included), so keep tool state (`.omc/` etc.) out of `mod/streambreak/` — run shells from the repo root.
+- **Release:** `claude plugin tag mod/streambreak --dry-run`, then without `--dry-run` (`streambreak--v<version>`, bump `version` in plugin.json first).
 - **CI/release gotchas:** vitest excludes `mod/**` (plugin tests run under `claude plugin test` only); biome lints `mod/**` except the engine-generated `.claude-plugin/types`. `release.yml` fires on `v*` tags — Mod releases must use `claude plugin tag` (`streambreak--v<ver>`), never `v0.x.x`.

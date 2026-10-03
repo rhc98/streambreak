@@ -30,6 +30,7 @@ import { FLIP_BACK_MS, flip, newMemory, settleMismatch } from './games/memory'
 import { newMines, press as pressMine, toggleMode } from './games/minesweeper'
 import { AVAILABLE_GAMES, gameSelector, gomokuView, memoryView, minesView } from './games/views'
 import { strings } from './i18n'
+import { hasLegacyHooks } from './legacy'
 import { DEFAULT_SETTINGS, resolveLanguage, type Settings, settingsFrom } from './settings'
 
 // $.state refs must be declared in the file that reads or writes them (validate's scan rule),
@@ -61,6 +62,7 @@ const newsIndex = atom({ plugin: 'streambreak', key: 'newsIndex' } as const, 0)
 const game = atom({ plugin: 'streambreak', key: 'game' } as const, null as GameKind | null)
 const memory = atom({ plugin: 'streambreak', key: 'memory' } as const, null as MemoryState | null)
 const gomoku = atom({ plugin: 'streambreak', key: 'gomoku' } as const, null as GomokuState | null)
+const isLegacyWarned = atom({ plugin: 'streambreak', key: 'isLegacyWarned' } as const, false)
 const minesweeper = atom(
   { plugin: 'streambreak', key: 'minesweeper' } as const,
   null as MinesState | null,
@@ -450,6 +452,21 @@ const loadLanguage = async ($: EngineInterface) => {
   }
 }
 
+// F15: once a session, if the Tauri app's hooks are still registered, say so (two popups
+// otherwise). The engine's own reading of the user settings: no path guessing, no parsing here.
+const warnLegacyHooks = async ($: EngineInterface) => {
+  let isFirst = false
+  await update($, isLegacyWarned, current => {
+    isFirst = !current
+    return true
+  })
+  if (!isFirst) return
+  const userSettings = await $.settings.read({ source: 'user' })
+  if (hasLegacyHooks(userSettings)) {
+    $.ui.toast((await stringsFor($)).legacyHooks, { timeoutMs: 12_000 })
+  }
+}
+
 export const register: Register = (on, options) => {
   settings = settingsFrom(options)
 
@@ -472,6 +489,7 @@ export const register: Register = (on, options) => {
 
     // Last, and on its own: a store failure here must not cost the re-arming above.
     await loadLanguage($).catch(error => debug($, `language load failed: ${error}`))
+    await warnLegacyHooks($).catch(error => debug($, `legacy hook check failed: ${error}`))
 
     return next(e)
   })

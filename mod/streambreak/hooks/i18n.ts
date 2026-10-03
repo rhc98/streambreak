@@ -6,6 +6,8 @@ const en = {
   // Desktop prefixes toasts with the plugin name, so toasts never repeat "streambreak".
   suggest: 'Break time — run /streambreak',
   opened: 'streambreak pane opened.',
+  legacyHooks:
+    'The desktop app’s hooks are still in your Claude Code settings.json — remove its show / hide / timer hook commands, or both will pop up.',
   notPlaced: (reason: string) =>
     `Pane is waiting to be shown (${reason}). Widen the terminal or update the desktop app.`,
   done: '✓ Claude finished — back to work',
@@ -35,6 +37,8 @@ const en = {
 const ko: typeof en = {
   suggest: '휴식 시간 — /streambreak',
   opened: 'streambreak 패널을 열었습니다.',
+  legacyHooks:
+    '데스크탑 앱의 훅이 Claude Code settings.json에 남아 있습니다 — show / hide / timer 훅 명령을 지우지 않으면 둘 다 뜹니다.',
   notPlaced: (reason: string) =>
     `패널이 표시 대기 중입니다(${reason}). 터미널을 넓히거나 데스크탑 앱을 업데이트하세요.`,
   done: '✓ 작업 완료 — 돌아갈 시간',

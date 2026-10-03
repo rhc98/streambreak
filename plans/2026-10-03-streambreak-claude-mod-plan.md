@@ -61,8 +61,8 @@
 - [x] F12 (P2) `userConfig` — threshold_seconds, language(en/ko 선택), rotation_seconds, fade_out_delay_ms (기존 `config.toml` 대응) (done · verified: tests/settings.test.ts(기본값·클램프) + language.test.ts/lifecycle.test.ts에서 `test(name, { options })`로 threshold·rotation·language·fade 0ms 적용 확인 — 2.1.286 CLI 필요(E1) · 클램프: threshold 1–3600s, rotation 5–3600s, fade 0–60000ms, 포커스 중 fade 재확인은 최소 1s)
 - [x] F13 (P2) Pane 안 언어 토글(EN ↔ KO) — `$.store` 오버라이드 (done · verified: language.test.ts — 토글 시 문구·GeekNews·맨 위 재시작·세션 간 유지, 빠른 두 번 누름, 로딩 중 재로드에도 유지, 한국어 시간 표기 · 명령 설명은 1회 등록이라 영어 유지)
 - [x] F14 (P2) 권한 프롬프트 / idle 알림 시 즉시 휴식 제안(기존 Notification 훅과 동등). F1(b) 결과에 따라 보류 가능 (done · verified: lifecycle.test.ts — `classic.PermissionRequest`(권한 창 표시 직전)와 Notification `permission_prompt`로 즉시 제안, 둘이 함께 와도 1회, 턴 없으면 없음 · `tool.check`의 `ask`는 쓰지 않음(auto/dontAsk·다른 플러그인 조회에서 창 없이도 ask) · 데스크탑 수동 확인(2026-10-03, ask 모드, Pane 닫힘): 권한 창이 뜬 동안 휴식 토스트 표시 확인 — 다만 같은 문구의 threshold(10s) 토스트와 시점으로만 구분되므로 PermissionRequest 발화의 확정 근거는 아님)
-- [ ] F15 (P3) 레거시 공존 경고 — `session.start`에서 `$.fs`로 `~/.claude/settings.json`을 읽어 `streambreak` 훅이 남아 있으면 토스트 1회(팝업 이중 방지 안내)
-- [ ] F16 (P3) 배포 및 문서 — 레포 루트 `.claude-plugin/marketplace.json`(source `./mod/streambreak`)으로 정본 기반 설치 경로를 만들고, `claude plugin marketplace add`(로컬 경로와 `rhc98/streambreak` 둘 다) 후 `claude plugin install`이 되는지 확인, README.md / README.ko.md에 Mod 섹션, AGENTS.md 갱신, 릴리스 태그 규칙(`claude plugin tag`) 기록
+- [x] F15 (P3) 레거시 공존 경고 — `session.start`에서 `$.fs`로 `~/.claude/settings.json`을 읽어 `streambreak` 훅이 남아 있으면 토스트 1회(팝업 이중 방지 안내) (done · verified: tests/legacy.test.ts — init.rs가 쓰는 훅 3종(필드 그대로)·절대/따옴표 경로 탐지, 다른 훅·유사 이름·hooks 밖 문자열·disableAllHooks는 무시, 세션당 1회(재로드 반복 없음, mutation check), 언어 따라감. 이 머신의 실제 settings.json에서 true · 계획과 차이: `$.fs`로 파일 경로를 추측하지 않고 엔진의 `$.settings.read({ source: 'user' })`로 읽음 · 실제 세션에서 토스트가 뜨는 것은 아직 눈으로 확인 안 함 · 기존 CLI에 제거 명령이 없어 수동 삭제를 안내)
+- [/] F16 (P3) 배포 및 문서 — 레포 루트 `.claude-plugin/marketplace.json`(source `./mod/streambreak`)으로 정본 기반 설치 경로를 만들고, `claude plugin marketplace add`(로컬 경로와 `rhc98/streambreak` 둘 다) 후 `claude plugin install`이 되는지 확인, README.md / README.ko.md에 Mod 섹션, AGENTS.md 갱신, 릴리스 태그 규칙(`claude plugin tag`) 기록 (in-progress · 완료: 루트 `.claude-plugin/marketplace.json`, `plugin validate .`·`--strict` 통과, 격리된 CLAUDE_CONFIG_DIR에서 로컬 경로 marketplace add + install 성공(0.1.0, enabled), README.md/README.ko.md Mod 섹션, AGENTS.md 배포·릴리스 규칙 · 남음: `rhc98/streambreak`(GitHub) 설치는 push 후 확인, 릴리스 태그 생성은 사용자 결정 · 발견: 로컬 경로 설치는 디스크의 미추적 파일(.omc/ 등)까지 복사)
 
 ---
 
@@ -83,28 +83,28 @@
 
 ## 검증 방법
 
-- [ ] V1 `claude plugin validate mod/streambreak` — 에러 0 (매니페스트, hooks 모듈, `$.state` 키가 `types/index.d.ts` 계약과 일치)
-- [ ] V2 타입체크 — `/plugin-types`로 `.claude/types` 생성 후 d.ts 헤더의 tsconfig로 `tsc --noEmit` 통과
+- [x] V1 `claude plugin validate mod/streambreak` — 에러 0 (매니페스트, hooks 모듈, `$.state` 키가 `types/index.d.ts` 계약과 일치) (done · verified: 2.1.286 `claude plugin validate mod/streambreak` 통과 — 매 커밋)
+- [x] V2 타입체크 — `/plugin-types`로 `.claude/types` 생성 후 d.ts 헤더의 tsconfig로 `tsc --noEmit` 통과 (done · verified: `tsc -p mod/streambreak` 0 — 엔진이 생성한 .claude-plugin/types/tsconfig 사용)
 - [x] V3 `claude plugin test` 순수 로직 — Gomoku(즉승 수 선택, 차단), Minesweeper(flood fill, 승패), Memory(일치 / 불일치), 피드 파서(고정 픽스처 3종 → `{title,url,source,icon,published_at}`, 정렬, max_items 10) (done · verified: tests/feed.test.ts, games.test.ts, minesweeper.test.ts, settings.test.ts — 2.1.286 CLI로 전부 통과)
 - [x] V4 `claude plugin test` 훅 시나리오 — 가짜 시계로 S2–S4, S7, S10 재현: threshold 후 토스트 1회, 조기 `turn.complete` / 중단 시 토스트 없음, 서브에이전트 `turn.complete` 무시, 재로드 후 재무장, `/clear` 후 phase 초기화 (done · verified: tests/lifecycle.test.ts 17건; 테스트 `$`에는 state 명사가 없어 토스트/닫힘/배너로 판정, 재로드는 inline `reloader` 플러그인이 이전 clock.after를 거부해 모사)
 - [x] V5 `claude plugin test` UI 마운트를 `['terminal','desktop','mobile']` 모두에서 통과 — Pane 렌더, 탭 전환, Button 동작, 트리 검증 거부 없음 (S1, S5, S6, S8, S9) (done · verified: pane/news/games-ui.test.ts가 terminal·desktop·mobile 3표면 마운트에서 탭·버튼·게임·카드 통과(S1, S5, S8, S9). S6는 terminal 마운트로 검증)
-- [ ] V6 헤드리스 로드 스모크 — `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude -p --plugin-dir mod/streambreak "hi"` 종료코드 0, stderr에 load / refused 문구 없음
-- [ ] V7 기존 앱 회귀 없음 — `bun run check && bun run test` 및 `cargo test --manifest-path src-tauri/Cargo.toml` 통과(vitest가 `mod/**`를 줍지 않음 포함, biome에 `mod/**`를 넣었다면 그것도 통과)
-- [ ] V8 Tauri 앱 무변경 — `git diff --stat master..HEAD -- src src-tauri`가 비어 있음
-- [ ] V9 정본 설치 경로 — `claude plugin validate .`(레포 루트 marketplace) 에러 0, `claude plugin validate mod/streambreak --strict` 통과
-- [ ] V10 이식성 — `git grep -n "/Users[/]" -- mod plans AGENTS.md README.md README.ko.md`가 비어 있음 (원격 체크아웃에서도 동작; 패턴을 `[/]`로 써서 이 줄 자신은 걸리지 않음)
-- [ ] V11 릴리스 격리 — `git tag --list`에 `v*` 형식의 Mod 태그가 없고 Mod 태그는 `streambreak--v*` 형식만 존재 (`release.yml`의 `v*` 트리거 보호)
+- [x] V6 헤드리스 로드 스모크 — `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude -p --plugin-dir mod/streambreak "hi"` 종료코드 0, stderr에 load / refused 문구 없음 (done · verified: 재로그인 후 2.1.282·2.1.286 모두 `CLAUDE_CODE_ENABLE_FUNCTION_HOOKS=1 claude -p --model haiku --plugin-dir mod/streambreak` 종료코드 0, 응답 "ok", stderr는 stdin 대기 안내뿐이고 load/refused 문구 없음)
+- [x] V7 기존 앱 회귀 없음 — `bun run check && bun run test` 및 `cargo test --manifest-path src-tauri/Cargo.toml` 통과(vitest가 `mod/**`를 줍지 않음 포함, biome에 `mod/**`를 넣었다면 그것도 통과) (done · verified: `bun run check` 에러 0·경고 32(master와 동일), `bun run test` 12 passed(mod/** 미수집), `cargo test` 10 passed)
+- [x] V8 Tauri 앱 무변경 — `git diff --stat master..HEAD -- src src-tauri`가 비어 있음 (done · verified: `git diff --stat master -- src src-tauri` 비어 있음 — 매 커밋)
+- [x] V9 정본 설치 경로 — `claude plugin validate .`(레포 루트 marketplace) 에러 0, `claude plugin validate mod/streambreak --strict` 통과 (done · verified: 2.1.286 `claude plugin validate .` 통과, `claude plugin validate mod/streambreak --strict` 통과)
+- [x] V10 이식성 — `git grep -n "/Users[/]" -- mod plans AGENTS.md README.md README.ko.md`가 비어 있음 (원격 체크아웃에서도 동작; 패턴을 `[/]`로 써서 이 줄 자신은 걸리지 않음) (done · verified: `git grep -n "/Users[/]" -- mod plans AGENTS.md README.md README.ko.md`를 커밋 직후(추적 파일 전체) 실행해 결과 없음 — git grep은 미추적 파일을 보지 않으므로 커밋 후 확인)
+- [x] V11 릴리스 격리 — `git tag --list`에 `v*` 형식의 Mod 태그가 없고 Mod 태그는 `streambreak--v*` 형식만 존재 (`release.yml`의 `v*` 트리거 보호) (done · verified: `git tag --list`에는 기존 앱 태그 v0.1.0–v0.2.1만 있고 Mod 태그는 아직 없음. Mod는 `claude plugin tag`(streambreak--v*)만 쓰도록 README·AGENTS.md에 기록)
 
 ---
 
 ## 테스트 환경
 
 - [x] E1 빌드 차이 확인 — 셸 `claude --version`은 2.1.282이고 데스크탑 번들 엔진(플러그인 작성 스킬의 d.ts 기준)은 2.1.286이다. 둘 다 `claude plugin validate / test`는 있다(셸에서 확인). d.ts는 2.1.286 기준이므로 셸 쪽 동작 차이에 주의하고, 구형 데스크탑이면 `isPlaced:false` 사유가 나온다 (done · verified: 셸 2.1.282는 `claude plugin test`에서 `test(name, { options })`를 무시해 userConfig 테스트 4건 실패, 데스크탑 번들 2.1.286 바이너리로는 전부 통과 → 플러그인 테스트·validate는 2.1.286 바이너리로 돌린다(AGENTS.md). validate는 두 버전 모두 통과)
-- [ ] E2 개발 로드 준비 — 새 세션에서 `plugin-authoring` 스킬을 다시 로드(세션마다 `~/.claude/dev-mods/<session-id>/` 폴더가 새로 생김)하고, 정본 `mod/streambreak`를 그 폴더에 링크한 뒤 뜨는 "Enable hot reloading for this session?"에 사용자가 `Enable for this session` 응답. 링크가 안 먹으면 F1(c)의 대안을 쓴다
+- [x] E2 개발 로드 준비 — 새 세션에서 `plugin-authoring` 스킬을 다시 로드(세션마다 `~/.claude/dev-mods/<session-id>/` 폴더가 새로 생김)하고, 정본 `mod/streambreak`를 그 폴더에 링크한 뒤 뜨는 "Enable hot reloading for this session?"에 사용자가 `Enable for this session` 응답. 링크가 안 먹으면 F1(c)의 대안을 쓴다 (done · verified: dev-mods symlink + "Enable for this session" + 편집 후 `/reload-plugins` — F1(c))
 - [x] E3 네트워크 — `curl -sI https://hnrss.org/frontpage https://techcrunch.com/feed/ https://news.hada.io/rss/news` 가 모두 200 (done · verified: 2026-10-03 curl 3개 모두 200)
 - [x] E4 피드 픽스처 확보 — 위 3개 피드의 샘플 XML을 `mod/streambreak/fixtures/`에 저장 (V3 입력) (done · 계획과 차이: 제3자 기사 본문을 레포에 넣지 않으려고 실제 피드 구조(CDATA, 숫자 엔티티, Atom 링크, +09:00)를 그대로 따른 합성 픽스처를 `tests/fixtures.ts`에 두었다. 실제 사본은 레포 밖 scratch에서 파서 검증용으로만 사용)
-- [ ] E5 수동 확인 표면 — Claude 데스크탑 Code 탭 1개, 터미널 2가지 폭(≥144열 / <144열), fullscreen 레이아웃 on/off
-- [ ] E6 이중 팝업 방지 — F15 전까지 개발 중에는 `~/.claude/settings.json`에 레거시 `streambreak` 훅이 없거나 Tauri 데몬이 꺼져 있음(`grep streambreak ~/.claude/settings.json`, `pgrep -fl streambreak`)
+- [/] E5 수동 확인 표면 — Claude 데스크탑 Code 탭 1개, 터미널 2가지 폭(≥144열 / <144열), fullscreen 레이아웃 on/off (in-progress · 데스크탑 Code 탭에서 Pane·뉴스·게임·언어·권한 토스트 수동 확인. 터미널 <144/≥144열, fullscreen on/off는 미확인)
+- [x] E6 이중 팝업 방지 — F15 전까지 개발 중에는 `~/.claude/settings.json`에 레거시 `streambreak` 훅이 없거나 Tauri 데몬이 꺼져 있음(`grep streambreak ~/.claude/settings.json`, `pgrep -fl streambreak`) (done · verified: 레거시 훅 3개는 settings.json에 남아 있으나 `pgrep -fl streambreak` 결과 없음(데몬 꺼짐) — F15 경고가 이 상태를 탐지)
 
 ---
 

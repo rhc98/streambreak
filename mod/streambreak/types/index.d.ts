@@ -86,6 +86,8 @@ declare module 'claude-code' {
       memory: MemoryState | null
       gomoku: GomokuState | null
       minesweeper: MinesState | null
+      /** F15: the legacy-hooks warning was shown this session (a reload must not repeat it). */
+      isLegacyWarned: boolean
     }
   }
 }
