@@ -126,7 +126,7 @@ for (const surface of SURFACES) {
       'https://example.com/tc-1?a=1&b=2',
       'https://example.com/tc-2',
     ])
-    expect(String(links[0]?.props.label)).toStartWith('› 🔥 Show HN')
+    expect(String(links[0]?.props.label)).toStartWith('🔥 Show HN')
     expect(await pane.find({ text: /Hacker News · 7h/ })).toBeDefined()
     await pane.unmount()
   })
@@ -208,7 +208,7 @@ test('F5: a cache from an earlier session answers without the network', async ($
 
   expect(sim.fetched).toHaveLength(0)
   const pane = await mount($)
-  expect(await cardTitles(pane)).toEqual(['› 🔥 Cached'])
+  expect(await cardTitles(pane)).toEqual(['🔥 Cached'])
 })
 
 test('S9: closing the pane stops the rotation and its refreshes', async ($, on) => {
@@ -243,7 +243,7 @@ test('F6: new items after a refresh start the rotation from the top', async ($, 
   await sim.clock.advance(TTL_MS - ROTATION_MS * 2)
 
   const pane = await mount($)
-  expect((await cardTitles(pane))[0]).toBe('› 🔥 Fresh headline')
+  expect((await cardTitles(pane))[0]).toBe('🔥 Fresh headline')
 })
 
 // Same as lifecycle.test.ts: refuses clock waits armed before the latest session.start, so a

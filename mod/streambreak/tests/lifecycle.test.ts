@@ -417,3 +417,22 @@ test('F14: the dialog and its notification together still offer once', async ($,
 
   expect(sim.toasts).toHaveLength(1)
 })
+
+test('F17: the pane says Claude is working only while a main turn runs', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  const working = async () => {
+    const pane = await mountPane($)
+    const line = await pane.find({ text: /Claude is working/ })
+    await pane.unmount()
+    return line !== undefined
+  }
+
+  expect(await working()).toBe(false)
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  expect(await working()).toBe(true)
+  await sim.clock.advance(THRESHOLD_MS) // still running after the break offer
+  expect(await working()).toBe(true)
+  await $.turn.complete(complete('t1'))
+  expect(await working()).toBe(false)
+})

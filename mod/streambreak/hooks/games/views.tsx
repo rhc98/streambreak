@@ -67,8 +67,18 @@ export const memoryView = (
   }))
 
   return (
-    <Box key="memory" flexDirection="column" gap={1}>
-      <Text bold={state.finishedAt !== null}>
+    <Box
+      key="memory"
+      flexDirection="column"
+      gap={1}
+      borderStyle="round"
+      borderColor="gray"
+      paddingX={1}
+    >
+      <Text
+        bold={state.finishedAt !== null}
+        color={state.finishedAt !== null ? 'green' : undefined}
+      >
         {state.finishedAt !== null
           ? t.memoryDone(state.moves, seconds)
           : t.memoryStatus(state.moves, seconds)}
@@ -91,7 +101,9 @@ export const memoryView = (
 
 // ASCII on purpose: `·●○` are East Asian Ambiguous and draw two columns wide in CJK terminals,
 // which would shift the grid and the click targets. Empty · person · AI.
-export const STONES = ['+', 'X', 'O'] as const
+export const RESULT_COLOR = { black: 'green', white: 'red', draw: 'yellow' } as const
+
+const STONES = ['+', 'X', 'O'] as const
 
 export const gomokuView = (
   els: Els,
@@ -110,8 +122,11 @@ export const gomokuView = (
   }))
 
   return (
-    <Box key="gomoku" flexDirection="column">
-      <Text bold={state.result !== null}>
+    <Box key="gomoku" flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
+      <Text
+        bold={state.result !== null}
+        color={state.result ? RESULT_COLOR[state.result] : undefined}
+      >
         {state.result ? t.gomokuResult[state.result] : t.gomokuTurn(lastAi)}
       </Text>
       <Box key="gomoku:header" flexDirection="row" gap={1}>
@@ -158,9 +173,18 @@ export const minesView = (
   }))
 
   return (
-    <Box key="minesweeper" flexDirection="column">
+    <Box
+      key="minesweeper"
+      flexDirection="column"
+      borderStyle="round"
+      borderColor="gray"
+      paddingX={1}
+    >
       <Box flexDirection="row" gap={1}>
-        <Text bold={state.status !== 'playing'}>
+        <Text
+          bold={state.status !== 'playing'}
+          color={state.status === 'won' ? 'green' : state.status === 'lost' ? 'red' : undefined}
+        >
           {state.status === 'playing'
             ? t.minesStatus(MINES - flagsPlaced(state))
             : t.minesResult[state.status]}

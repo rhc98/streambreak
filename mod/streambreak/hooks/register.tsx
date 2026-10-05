@@ -14,15 +14,12 @@ import type {
 import {
   asFeedCache,
   cacheKey,
-  cleanText,
   FEEDS,
   FETCH_TIMEOUT_MS,
   type FeedSource,
   isFresh,
   parseFeed,
-  safeHref,
   settleFetches,
-  timeAgo,
   visibleWindow,
 } from './feed'
 import { newGomoku, playTurn } from './games/gomoku'
@@ -32,6 +29,7 @@ import { AVAILABLE_GAMES, gameSelector, gomokuView, memoryView, minesView } from
 import { strings } from './i18n'
 import { hasLegacyHooks } from './legacy'
 import { DEFAULT_SETTINGS, resolveLanguage, type Settings, settingsFrom } from './settings'
+import { chrome, newsView } from './views'
 
 // $.state refs must be declared in the file that reads or writes them (validate's scan rule),
 // so every state access stays in this file; other modules hold pure logic and drawing.
@@ -580,7 +578,7 @@ export const register: Register = (on, options) => {
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const els = $.ui.resolve(e)
-    const { Box, Text, Button, Link } = els
+    const { Box, Text } = els
     // Each read subscribes this drawing: read only what the shown tab draws, so a news tick never
     // redraws an 81-button board and a game move never redraws the news.
     const [currentPhase, currentTab, now, currentLanguage] = await Promise.all([
@@ -617,58 +615,21 @@ export const register: Register = (on, options) => {
 
     return (
       <Box flexDirection="column" gap={1}>
-        {currentPhase === 'done' && (
-          <Box key="banner">
-            <Text bold color="green">
-              {t.done}
-            </Text>
-          </Box>
-        )}
-        <Box flexDirection="row" gap={1}>
-          <Button
-            key="tab:news"
-            variant={currentTab === 'news' ? 'primary' : 'secondary'}
-            onPress={select('news')}
-          >
-            {t.news}
-          </Button>
-          <Button
-            key="tab:games"
-            variant={currentTab === 'games' ? 'primary' : 'secondary'}
-            onPress={select('games')}
-          >
-            {t.games}
-          </Button>
-          <Button key="lang" onPress={act('language', () => toggleLanguage($))}>
-            {t.switchLanguage}
-          </Button>
-          <Button key="close" role="dismiss" onPress={act('close', () => closePane($))}>
-            {t.close}
-          </Button>
-        </Box>
+        {chrome(els, t, currentTab, currentPhase, {
+          onTab: select,
+          onLanguage: act('language', () => toggleLanguage($)),
+          onClose: act('close', () => closePane($)),
+        })}
         {isNews && feed ? (
-          <Box key="news" flexDirection="column" gap={1}>
-            {feed.isOffline && <Text color="yellow">{t.offline}</Text>}
-            {feed.items.length === 0 && (
-              <Text dimColor>{feed.isLoading ? t.loading : t.newsEmpty}</Text>
-            )}
-            {visibleWindow(feed.items, index).map((item, position) => {
-              // Sanitized here, not only at parse time, so caches from older builds draw too (H1).
-              const title = cleanText(`${position === 0 ? '›' : ' '} ${item.icon} ${item.title}`)
-              const href = safeHref(item.url)
-              const ago = timeAgo(item.published_at, now, t.ago)
-              return (
-                <Box key={`card:${item.url || item.title}`} flexDirection="column">
-                  {href ? <Link href={href} label={title} /> : <Text>{title}</Text>}
-                  <Text dimColor>
-                    {'    '}
-                    {cleanText(item.source)}
-                    {ago && ` · ${ago}`}
-                  </Text>
-                </Box>
-              )
-            })}
-          </Box>
+          newsView(els, t, {
+            items: feed.items,
+            shown: visibleWindow(feed.items, index),
+            index,
+            isOffline: feed.isOffline,
+            isLoading: feed.isLoading,
+            now,
+            columns: e.props.bodyColumns,
+          })
         ) : (
           <Box key="games" flexDirection="column" gap={1}>
             {gameSelector(els, t, currentGame, pickGame, newGame)}
