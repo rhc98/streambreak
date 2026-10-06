@@ -179,7 +179,7 @@ test('S8: offline with a cache keeps rotating the cache, says offline, no retry 
   expect(sim.fetched).toHaveLength(attempts)
 })
 
-test('S8: offline with no cache shows the empty state', async ($, on) => {
+test('S8: offline with no cache says the news could not load, not that there is none', async ($, on) => {
   const sim = engine(on)
   sim.goOffline()
   await open($)
@@ -187,8 +187,9 @@ test('S8: offline with no cache shows the empty state', async ($, on) => {
 
   const pane = await mount($)
   expect(await pane.findAll({ type: 'Link' })).toHaveLength(0)
-  expect(await pane.find({ text: /No news yet/ })).toBeDefined()
-  expect(await pane.find({ text: /Offline/ })).toBeDefined()
+  expect(await pane.find({ text: /couldn’t load news/ })).toBeDefined()
+  expect(await pane.find({ text: /No news yet/ })).toBeUndefined()
+  expect(await pane.find({ text: /saved news/ })).toBeUndefined() // one offline line, not two
 })
 
 test('F5: a cache from an earlier session answers without the network', async ($, on) => {

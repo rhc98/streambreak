@@ -89,5 +89,5 @@ test('F15: the warning follows the language', { options: { language: 'ko' } }, a
   const sim = engine(on, LEGACY)
   await $.session.start(start)
 
-  expect(sim.toasts[0]?.text).toContain('데스크탑 앱의 훅')
+  expect(sim.toasts[0]?.text).toContain('예전 앱 훅')
 })

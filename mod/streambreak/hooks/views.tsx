@@ -129,9 +129,16 @@ export const newsView = (els: Els, t: Strings, view: NewsView) => {
         <Text dimColor>
           {view.items.length > 0 ? t.newsPosition(position, view.items.length) : ''}
         </Text>
-        {view.isOffline && <Text color={tone.warning}>{t.offline}</Text>}
+        {view.isOffline && view.items.length > 0 && <Text color={tone.warning}>{t.offline}</Text>}
       </Box>
-      {view.items.length === 0 && <Text dimColor>{view.isLoading ? t.loading : t.newsEmpty}</Text>}
+      {view.items.length === 0 &&
+        (view.isLoading ? (
+          <Text dimColor>{t.loading}</Text>
+        ) : view.isOffline ? (
+          <Text color={tone.warning}>{t.newsOfflineEmpty}</Text>
+        ) : (
+          <Text dimColor>{t.newsEmpty}</Text>
+        ))}
       {featured && (
         <Box
           key={`card:${featured.url || featured.title}`}

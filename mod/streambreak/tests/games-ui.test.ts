@@ -179,7 +179,9 @@ test('F8: the clock shows the seconds played', async ($, on) => {
 test('F11: New game deals a fresh deck; switching games keeps each board', async ($, on) => {
   engine(on)
   const pane = await openGame($, 'gomoku')
+  expect(await pane.find({ text: /^Your move \(X\)$/ })).toBeDefined()
   await pane.press({ key: 'gomoku:4:4' })
+  expect(await pane.find({ text: /^AI played [a-i][1-9] — your move \(X\)$/ })).toBeDefined()
   await pane.press({ key: 'game:memory' })
   await pane.press({ key: 'memory:3' })
   await pane.press({ key: 'game:gomoku' })

@@ -318,12 +318,12 @@ $.ui.open({ id: PANE, title: 'streambreak', rows: 20, columns: 40, closeOnEscape
 |---|---|---|
 | `suggest` | Break time — run /streambreak / 휴식 시간 — /streambreak | Claude is on it — /streambreak for a break / Claude가 작업 중이에요 — 쉬려면 /streambreak |
 | `opened` (모델이 읽는 명령 결과) | streambreak pane opened. / streambreak 패널을 열었습니다. | streambreak pane opened / streambreak 패널을 열었어요 |
-| `legacyHooks` | (약 150자) | Old streambreak app hooks are still in settings.json — remove them or both pop up / 예전 앱 훅이 settings.json에 남아 있어요 — 지우지 않으면 둘 다 떠요 |
+| `legacyHooks` | (약 150자) | Old app hooks are still in settings.json — remove them or both pop up / 예전 앱 훅이 settings.json에 남아 있어요 — 지우지 않으면 둘 다 떠요 |
 | `notPlaced` | …넓히거나 업데이트하세요 | Pane is waiting (reason) — widen the terminal or update the app / 패널이 대기 중이에요(사유) — 터미널을 넓히거나 앱을 업데이트해 주세요 |
 | `working` | ⏳ Claude is working… / ⏳ Claude가 작업 중… | ⎿ Claude is working… / ⎿ Claude가 작업 중이에요 |
 | `done` | ✓ Claude finished — back to work / ✓ 작업 완료 — 돌아갈 시간 | ✓ Claude is done — back to work / ✓ Claude가 끝냈어요 — 돌아갈 시간이에요 |
 | `newsEmpty` | No news yet. / 아직 뉴스가 없습니다. | No news yet / 아직 뉴스가 없어요 |
-| `newsOfflineEmpty` (신규) | – | Offline — couldn't load news / 오프라인이라 뉴스를 불러오지 못했어요 |
+| `newsOfflineEmpty` (신규) | – | Offline — couldn’t load news / 오프라인이라 뉴스를 불러오지 못했어요 |
 | `offline` | Offline — showing the last saved news / 오프라인 — 마지막으로 저장된 뉴스입니다 | Offline — saved news / 오프라인 — 저장된 뉴스예요 |
 | `gamesEmpty` | Pick a game. / 게임을 고르세요. | Pick a game / 게임을 골라 보세요 |
 | `gomokuTurn` | AI played g6 — your turn (X) / AI가 g6에 둠 — 당신 차례 (X) | AI played g6 — your move (X) / AI가 g6에 뒀어요 — 둘 차례예요 (X). `X`는 `glyphs(surface)`에서 읽는다 |
@@ -396,9 +396,22 @@ $.ui.open({ id: PANE, title: 'streambreak', rows: 20, columns: 40, closeOnEscape
     - `claude plugin validate` 통과, `claude plugin test` 132/132(2.1.286), `tsc -p mod/streambreak` 0, `bun run check` 경고 32
     - V8 diff 비어 있음
     - 변이 검사: `EMOJI.test`를 빼면 D1 너비 테스트가 실패한다.
-- [ ] **D2 문구.**
-  - 위 표대로 `i18n.ts`를 고친다. `newsOfflineEmpty`와 `narrowGame`을 추가한다.
-  - 영향: `language.test.ts:112`가 정확한 문자열 `'Break time — run /streambreak'`을 기대한다. 나머지는 정규식이라 그대로 맞는다.
+- [x] **D2 문구.** (done · verified: 아래 결과 + code-reviewer APPROVE, MEDIUM·LOW 지적 반영)
+  - 위 표대로 `i18n.ts`를 고친다. 한국어는 해요체로 통일한다.
+  - `newsOfflineEmpty` 추가: 오프라인이고 캐시도 없으면 `warning` 색으로 "불러오지 못했어요"를 보인다. 이때 메타 줄의 `offline` 문구는 숨겨서 오프라인 표시가 한 번만 나온다.
+  - `gomokuTurn`이 돌 기호를 인자로 받는다(`GLYPHS.stones[1]`). D4에서 표면별 기호로 바뀌어도 문구가 따라간다.
+  - 계획과 다른 점: `narrowGame`은 쓰는 곳이 생기는 D4에서 추가한다.
+  - 영향받은 테스트:
+    - `language.test.ts:112`: 토스트 정확 문자열
+    - `legacy.test.ts:92`: 한국어 경고 문구
+    - `news.test.ts`의 S8(오프라인·캐시 없음): 새 문구를 단언하도록 바꿨다. 기존 "No news yet" 단언은 반대로 "없어야 한다"로 바꿨다.
+  - 결과(2026-10-06):
+    - `claude plugin test` 132/132(2.1.286), `validate` 통과, `tsc` 0, `bun run check` 경고 32
+    - 변이 검사: 오프라인 분기를 지우면 S8 테스트가 실패한다.
+    - 리뷰 반영:
+      - 영어 `legacyHooks`에서 제품 이름을 빼 80자 규칙과 "토스트에 streambreak를 반복하지 않는다" 주석에 맞췄다.
+      - 오목 차례 문구 단언을 추가했다(F11).
+    - 범위 밖으로 남긴 것: 새로고침이 예외로 끝나고 캐시도 없으면 오프라인이 아니라 "아직 뉴스가 없어요"로 보인다(`register.tsx` catch 경로, D2 이전부터 있던 동작).
 - [ ] **D3 레이아웃 고정.**
   - StatusSlot을 항상 1줄로 그린다. 완료는 테두리 없는 1줄이다.
   - GameSelector와 GameStatus에 `flexWrap`을 준다.

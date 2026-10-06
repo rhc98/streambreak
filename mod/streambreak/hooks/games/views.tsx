@@ -131,7 +131,7 @@ export const gomokuView = (
         bold={state.result !== null}
         color={state.result ? RESULT_COLOR[state.result] : undefined}
       >
-        {state.result ? t.gomokuResult[state.result] : t.gomokuTurn(lastAi)}
+        {state.result ? t.gomokuResult[state.result] : t.gomokuTurn(lastAi, GLYPHS.stones[1])}
       </Text>
       <Box key="gomoku:header" flexDirection="row" gap={1}>
         <Text dimColor>{'  '}</Text>

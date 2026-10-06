@@ -109,7 +109,7 @@ test(
     await sim.clock.advance(2_999)
     expect(sim.toasts).toHaveLength(0)
     await sim.clock.advance(1)
-    expect(sim.toasts).toEqual(['Break time — run /streambreak'])
+    expect(sim.toasts).toEqual(['Claude is on it — /streambreak for a break'])
   },
 )
 
