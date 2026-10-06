@@ -18,6 +18,11 @@ export const tone = {
   success: 'success',
   danger: 'error',
   warning: 'warning',
+  /**
+   * The theme's own text color, for bold headings: the terminal draws an uncolored bold run in its
+   * default foreground, which vanishes on the light pane a light theme paints in a dark terminal.
+   */
+  text: 'text',
 } as const
 
 /**

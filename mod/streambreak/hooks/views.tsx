@@ -123,12 +123,33 @@ export type NewsView = {
   isLoading: boolean
   now: number
   columns: number
+  surface: RenderSurface
 }
 
 const linkOrText = (els: Els, item: NewsItem, label: string) => {
   const { Text, Link } = els
   const href = safeHref(item.url)
   return href ? <Link href={href} label={label} /> : <Text>{label}</Text>
+}
+
+// A terminal cannot say whether it draws links (OSC 8): one that does shows a Link as plain text,
+// one that does not appends the whole URL, which breaks a one-line row (D0). So on the terminal the
+// rows are text and only the featured card links, underlined as the cue; elsewhere all of them link.
+const featuredTitle = (els: Els, item: NewsItem, label: string, surface: RenderSurface) => {
+  const { Text } = els
+  // The underline promises a link: none when the URL is not one we would open.
+  return surface === 'terminal' ? (
+    <Text bold underline={safeHref(item.url) !== undefined} color={tone.text}>
+      {linkOrText(els, item, label)}
+    </Text>
+  ) : (
+    <Text bold>{linkOrText(els, item, label)}</Text>
+  )
+}
+
+const rowTitle = (els: Els, item: NewsItem, label: string, surface: RenderSurface) => {
+  const { Text } = els
+  return surface === 'terminal' ? <Text>{label}</Text> : linkOrText(els, item, label)
 }
 
 /** One featured card in a border, the next ones as single dim lines. */
@@ -167,7 +188,12 @@ export const newsView = (els: Els, t: Strings, view: NewsView) => {
           borderColor={tone.border}
           paddingX={1}
         >
-          {linkOrText(els, featured, cleanText(`${featured.icon} ${featured.title}`))}
+          {featuredTitle(
+            els,
+            featured,
+            cleanText(`${featured.icon} ${featured.title}`),
+            view.surface,
+          )}
           <Text dimColor>{meta(featured)}</Text>
         </Box>
       )}
@@ -175,7 +201,12 @@ export const newsView = (els: Els, t: Strings, view: NewsView) => {
         <Box flexDirection="column" paddingX={1}>
           {rest.map(item => (
             <Box key={`card:${item.url || item.title}`} flexDirection="row" gap={1}>
-              {linkOrText(els, item, clip(cleanText(`${item.icon} ${item.title}`), rowWidth(item)))}
+              {rowTitle(
+                els,
+                item,
+                clip(cleanText(`${item.icon} ${item.title}`), rowWidth(item)),
+                view.surface,
+              )}
               <Text dimColor>{meta(item)}</Text>
             </Box>
           ))}

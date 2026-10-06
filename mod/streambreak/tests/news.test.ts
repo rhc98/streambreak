@@ -104,8 +104,29 @@ const pressClose = async ($: Engine) => {
   await pane.unmount()
 }
 
+// Every card is a Box keyed by its URL (or title); on the terminal only the featured card is a
+// Link, the rows are text (D5), so cards are counted by their Boxes.
+const cardUrls = async (pane: Awaited<ReturnType<typeof mount>>) =>
+  (await pane.findAll({ type: 'Box' }))
+    .map(box => box.key ?? '')
+    .filter(key => key.startsWith('card:'))
+    .map(key => key.slice('card:'.length))
+
+type Drawn = string | { type?: string; props?: Record<string, unknown>; children?: unknown[] }
+
+// A drawn node's text: a Link reads as its label, whether or not a Text wraps it.
+const textOf = (node: unknown): string => {
+  if (typeof node === 'string') return node
+  const one = node as Exclude<Drawn, string>
+  if (one.type === 'Link') return String(one.props?.label ?? '')
+  return (one.children ?? []).map(textOf).join('')
+}
+
+/** Each card's title line (its first child), in order. */
 const cardTitles = async (pane: Awaited<ReturnType<typeof mount>>) =>
-  (await pane.findAll({ type: 'Link' })).map(link => String(link.props.label))
+  (await pane.findAll({ type: 'Box' }))
+    .filter(box => box.key?.startsWith('card:'))
+    .map(box => textOf(box.children[0]))
 
 for (const surface of SURFACES) {
   test(`F5/F6 ${surface}: opening fetches the English feeds and draws newest-first cards`, async ($, on) => {
@@ -120,13 +141,22 @@ for (const surface of SURFACES) {
     const pane = await mount($, surface)
     const links = await pane.findAll({ type: 'Link' })
     // 4 items, 3 with a date: HN 04:53, TC 00:45... newest first; undated last.
-    expect(links.map(link => link.props.href)).toEqual([
+    expect(await cardUrls(pane)).toEqual([
       'https://example.com/hn-1',
       'https://example.com/hn-2',
       'https://example.com/tc-1?a=1&b=2',
       'https://example.com/tc-2',
     ])
     expect(String(links[0]?.props.label)).toStartWith('🔥 Show HN')
+    expect(links).toHaveLength(surface === 'terminal' ? 1 : 4) // terminal rows are text (D5)
+    const urls = await cardUrls(pane)
+    expect(links.map(link => link.props.href)).toEqual(urls.slice(0, links.length))
+    const featured = (await pane.findAll({ type: 'Box' })).find(box => box.key?.startsWith('card:'))
+    const title = featured?.children[0] as { props: Record<string, unknown> }
+    // The terminal's only link is underlined as its cue; a desktop anchor carries its own.
+    expect(title.props).toMatchObject(
+      surface === 'terminal' ? { bold: true, underline: true, color: 'text' } : { bold: true },
+    )
     expect(await pane.find({ text: /Hacker News · 7h/ })).toBeDefined()
     await pane.unmount()
   })
@@ -290,11 +320,17 @@ test('H1: hostile links and titles never get the pane refused, on any surface, a
           String(link.props.href).startsWith('https://'),
         ),
       ).toBe(true)
+      if (surface === 'terminal') {
+        // Underlined only when the featured title really links.
+        const card = (await pane.findAll({ type: 'Box' })).find(box => box.key?.startsWith('card:'))
+        const title = card?.children[0] as { props: Record<string, unknown> } | undefined
+        expect(title?.props.underline).toBe((await pane.findAll({ type: 'Link' })).length === 1)
+      }
       await pane.unmount()
     }
     await sim.clock.advance(ROTATION_MS)
   }
-  const pane = await mount($)
+  const pane = await mount($, 'desktop') // every card a Link there
   expect(await pane.find({ text: /Plain http/ })).toBeDefined()
   expect((await pane.findAll({ type: 'Link' })).map(link => link.props.href)).toContain(
     'https://example.com/wiki/%ED%95%9C%EA%B8%80%20%EB%AC%B8%EC%84%9C',
@@ -321,10 +357,7 @@ test('M3: a source that never answers is dropped after 10 s and later refreshes 
   await sim.clock.advance(10_000)
 
   const pane = await mount($)
-  expect((await pane.findAll({ type: 'Link' })).map(link => link.props.href)).toEqual([
-    'https://example.com/hn-1',
-    'https://example.com/hn-2',
-  ])
+  expect(await cardUrls(pane)).toEqual(['https://example.com/hn-1', 'https://example.com/hn-2'])
   await pane.unmount()
   const before = sim.fetched.length
   await sim.clock.advance(TTL_MS)

@@ -475,7 +475,30 @@ $.ui.open({ id: PANE, title: 'streambreak', rows: 20, columns: 40, closeOnEscape
     - 터미널에서 수를 둔 칸이 Text로 바뀐 뒤 포커스 링이 어디로 가는지
     - 지뢰 승리 판은 무작위 배치라 자동 테스트로 만들지 않았다. 승리와 패배는 같은 `isPlaying` 분기를 쓰고, 패배 경로는 테스트한다.
   - 기호 세트 메모: 끝난 지뢰 판의 닫힌 칸은 dim으로 그린다. 끝나서 더 누를 수 없다는 뜻이다(진행 중에는 기본색).
-- [ ] **D5 링크.** 위 "링크" 규칙을 적용한다. terminal에서 목록 줄은 Text, 대표 카드는 밑줄 Link다. 검증: 터미널 마운트에서 목록 줄에 Link가 없고 대표 카드에 Link가 1개 있다. desktop 마운트에서는 목록 줄도 Link다.
+- [x] **D5 링크.** (done · verified: 아래 결과 + code-reviewer APPROVE, MEDIUM 2건 반영)
+  - terminal:
+    - 목록 줄은 `Text`로 그린다.
+    - 대표 카드는 `<Text bold underline color={tone.text}>`로 감싼 `Link`다.
+  - 다른 표면:
+    - 목록 줄도 `Link`다.
+    - 대표 카드는 `<Text bold>`로 감싼다(anchor 자체의 색을 살린다).
+  - `tone.text`(테마 키 `text`)를 추가했다. 어두운 터미널에서 light 테마를 쓸 때 bold 제목이 사라지는 문제를 막는다(D0 H3).
+  - `NewsView`가 `surface`를 받는다.
+  - 테스트:
+    - 카드는 Link 대신 key가 `card:<url>`인 Box로 찾는다.
+      - `cardUrls`, `cardTitles` 헬퍼(news), `hrefs`(language)
+      - `cardTitles`는 첫 자식에서 Link 라벨이나 텍스트를 읽는다.
+    - F5/F6(3표면):
+      - Link 수: 터미널 1, 그 외 4
+      - 대표 제목 props: 터미널 `{ bold, underline, color: 'text' }`, 그 외 `{ bold }`
+    - H1(안전하지 않은 링크 정규화)은 모든 카드가 Link인 desktop에 마운트해 확인한다.
+  - 결과(2026-10-06):
+    - 141/141, `validate` 통과, `tsc` 0, 경고 32, V8 diff 비어 있음
+    - 변이 검사: 목록 줄을 다시 Link로 되돌리거나 밑줄을 빼면 F5/F6 terminal이 실패한다.
+  - 리뷰 반영:
+    - 밑줄은 `safeHref`가 받아 준 URL에만 긋는다. 그 밖의 URL(http, 빈 값, 너무 긴 값)은 링크가 아닌데 밑줄만 있는 가짜 단서가 된다. H1 회전에서 터미널 대표 제목의 밑줄과 Link 유무가 같은지 단언한다(항상 밑줄로 바꾸는 변이를 잡는다).
+    - F5/F6은 Link의 href가 카드 URL 순서와 같은지도 단언한다(정규화된 href 검사를 복원).
+  - 남긴 것: 터미널 목록 줄은 누를 수 없어서, 그 URL은 회전으로 대표 카드가 되었을 때만 열 수 있다. 계획에서 받아들인 대가다. 빈 URL 두 개가 같은 제목이면 카드 key가 겹칠 수 있다(D4 이전부터 있던 동작).
 - [ ] **D6 검증.**
   - 자동 검사:
     - `claude plugin validate mod/streambreak` (2.1.286 CLI)

@@ -645,6 +645,7 @@ export const register: Register = (on, options) => {
             isLoading: feed.isLoading,
             now,
             columns: e.props.bodyColumns,
+            surface: e.surface,
           })
         ) : (
           <Box key="games" flexDirection="column" gap={1}>

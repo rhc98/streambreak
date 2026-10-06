@@ -96,8 +96,12 @@ const mount = ($: Engine) =>
     },
   })
 
+// Every card is a Box keyed by its URL; on the terminal only the featured one is a Link (D5).
 const hrefs = async (pane: Awaited<ReturnType<typeof mount>>) =>
-  (await pane.findAll({ type: 'Link' })).map(link => String(link.props.href))
+  (await pane.findAll({ type: 'Box' }))
+    .map(box => box.key ?? '')
+    .filter(key => key.startsWith('card:'))
+    .map(key => key.slice('card:'.length))
 
 test(
   'F12: threshold_seconds sets when the break toast comes',
