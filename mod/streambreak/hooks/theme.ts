@@ -9,6 +9,10 @@ import type { RenderSurface } from 'claude-code'
 // no error (D0), so check these names again on each engine bump.
 
 export const tone = {
+  /** Our own accent, used sparingly: the Gomoku AI's stones. */
+  accent: 'claude',
+  /** The person's own marks: their Gomoku stones. */
+  you: 'suggestion',
   /** Level-1 borders: the featured news card and the game boards. */
   border: 'promptBorder',
   success: 'success',
@@ -16,20 +20,62 @@ export const tone = {
   warning: 'warning',
 } as const
 
+/**
+ * Minesweeper numbers by count (index 0 unused): the classic 1 blue, 2 green, 3 red, then ones that
+ * only need to differ. 7 and 8 keep the default color; they are rare and must not fade. The digits
+ * themselves tell the counts apart where a theme merges two colors (daltonized: 1 and 2).
+ */
+export const MINE_COLOR = [
+  undefined,
+  tone.you,
+  tone.success,
+  tone.danger,
+  // 4 and 6 have no theme key of their own; the raw ANSI names follow the terminal's palette, and
+  // the desktop maps them to readable shades in both themes (D0).
+  'magenta',
+  tone.warning,
+  'cyan',
+  undefined,
+  undefined,
+] as const
+
+export type Glyphs = {
+  mineHidden: string
+  mineFlag: string
+  mine: string
+  mineEmpty: string
+  /** Gomoku: empty · the person · the AI. */
+  stones: readonly [string, string, string]
+  cardBack: string
+}
+
 // Terminal glyphs. One column wide in every terminal (the board is a grid of one-glyph controls);
-// `·●○` are East Asian Ambiguous and may draw two columns wide. The card back is the exception:
+// `·●○■` are East Asian Ambiguous and may draw two columns wide. The card back is the exception:
 // every Memory card is a `[ … ]` Button holding a two-column emoji, so the rows still line up.
-export const GLYPHS = {
+const ASCII: Glyphs = {
   mineHidden: '#',
   mineFlag: 'F',
   mine: '*',
   mineEmpty: '.',
-  /** Gomoku: empty · the person · the AI. */
   stones: ['+', 'X', 'O'],
   cardBack: '❓',
-  /** Before the selected tab or game on the terminal. */
-  selected: '›',
-} as const
+}
+
+// The other surfaces draw each cell as a control of its own, so wider glyphs cannot shift the grid.
+// An empty open cell is a no-break space: a plain space may collapse to nothing in a web view.
+const RICH: Glyphs = {
+  mineHidden: '■',
+  mineFlag: '🚩',
+  mine: '💣',
+  mineEmpty: '\u00a0',
+  stones: ['·', '●', '○'],
+  cardBack: '❓',
+}
+
+export const glyphs = (surface: RenderSurface): Glyphs => (surface === 'terminal' ? ASCII : RICH)
+
+/** Before the selected tab or game on the terminal. */
+const SELECTED = '›'
 
 /**
  * A tab or game label. The terminal draws a primary Button in the accent color alone, which the
@@ -38,5 +84,5 @@ export const GLYPHS = {
  */
 export const selectableLabel = (surface: RenderSurface, label: string, isSelected: boolean) => {
   if (surface !== 'terminal') return label
-  return isSelected ? `${GLYPHS.selected} ${label}` : `  ${label}`
+  return isSelected ? `${SELECTED} ${label}` : `  ${label}`
 }

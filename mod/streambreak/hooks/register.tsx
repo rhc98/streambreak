@@ -25,10 +25,18 @@ import {
 import { newGomoku, playTurn } from './games/gomoku'
 import { FLIP_BACK_MS, flip, newMemory, settleMismatch } from './games/memory'
 import { newMines, press as pressMine, toggleMode } from './games/minesweeper'
-import { AVAILABLE_GAMES, gameSelector, gomokuView, memoryView, minesView } from './games/views'
+import {
+  AVAILABLE_GAMES,
+  BOARD_COLUMNS,
+  gameSelector,
+  gomokuView,
+  memoryView,
+  minesView,
+} from './games/views'
 import { strings } from './i18n'
 import { hasLegacyHooks } from './legacy'
 import { DEFAULT_SETTINGS, resolveLanguage, type Settings, settingsFrom } from './settings'
+import { glyphs } from './theme'
 import { chrome, newsView } from './views'
 
 // $.state refs must be declared in the file that reads or writes them (validate's scan rule),
@@ -595,6 +603,7 @@ export const register: Register = (on, options) => {
       read($, language),
     ])
     const t = strings(currentLanguage)
+    const g = glyphs(e.surface)
     const isNews = currentTab === 'news'
     const [feed, index] = isNews
       ? await Promise.all([read($, news), read($, newsIndex)])
@@ -640,19 +649,36 @@ export const register: Register = (on, options) => {
         ) : (
           <Box key="games" flexDirection="column" gap={1}>
             {gameSelector(els, t, e.surface, currentGame, pickGame, newGame)}
-            {currentGame === 'memory' && memoryState ? (
-              memoryView(els, t, memoryState, now, cardIndex =>
-                act('flip', () => flipCard($, cardIndex))(),
+            {currentGame && e.props.bodyColumns < BOARD_COLUMNS[currentGame] ? (
+              <Text dimColor>{t.narrowGame}</Text>
+            ) : currentGame === 'memory' && memoryState ? (
+              memoryView(
+                els,
+                t,
+                g,
+                memoryState,
+                now,
+                cardIndex => act('flip', () => flipCard($, cardIndex))(),
+                newGame,
               )
             ) : currentGame === 'gomoku' && gomokuState ? (
-              gomokuView(els, t, gomokuState, (r, c) => act('move', () => playGomoku($, r, c))())
+              gomokuView(
+                els,
+                t,
+                g,
+                gomokuState,
+                (r, c) => act('move', () => playGomoku($, r, c))(),
+                newGame,
+              )
             ) : currentGame === 'minesweeper' && minesState ? (
               minesView(
                 els,
                 t,
+                g,
                 minesState,
                 (r, c) => act('mines', () => pressMines($, r, c))(),
                 act('mines mode', () => toggleMinesMode($)),
+                newGame,
               )
             ) : (
               <Text dimColor>{t.gamesEmpty}</Text>
