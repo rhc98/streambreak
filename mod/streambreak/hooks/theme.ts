@@ -1,3 +1,5 @@
+import type { RenderSurface } from 'claude-code'
+
 // Design tokens (plans/2026-10-05-streambreak-mod-design-system.md): the one place in the mod that
 // names a color or a board glyph. Views use the roles, never a color string of their own.
 //
@@ -25,4 +27,16 @@ export const GLYPHS = {
   /** Gomoku: empty · the person · the AI. */
   stones: ['+', 'X', 'O'],
   cardBack: '❓',
+  /** Before the selected tab or game on the terminal. */
+  selected: '›',
 } as const
+
+/**
+ * A tab or game label. The terminal draws a primary Button in the accent color alone, which the
+ * ANSI and daltonized themes blur, so the selected one also gets a mark; the others keep its room,
+ * so a selection never moves the buttons. Other surfaces fill the primary natively.
+ */
+export const selectableLabel = (surface: RenderSurface, label: string, isSelected: boolean) => {
+  if (surface !== 'terminal') return label
+  return isSelected ? `${GLYPHS.selected} ${label}` : `  ${label}`
+}

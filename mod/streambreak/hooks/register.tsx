@@ -561,7 +561,14 @@ export const register: Register = (on, options) => {
 
   // F4 / S5: the pane opens only on the person's action; a pane left unplaced is explained once.
   on('command.run', { command: 'streambreak' }, async $ => {
-    const opened = await $.ui.open({ id: PANE, title: 'streambreak' })
+    // rows: Gomoku and the chrome fit inline; columns: Memory and the header fit when docked.
+    const opened = await $.ui.open({
+      id: PANE,
+      title: 'streambreak',
+      rows: 20,
+      columns: 40,
+      closeOnEscape: true,
+    })
     await settlePendingMismatch($) // S9: reopening resolves a flip-back left waiting
     if ((await read($, tab)) === 'games') await ensureGame($) // F11: never an empty games tab
     startRotation($)
@@ -615,7 +622,7 @@ export const register: Register = (on, options) => {
 
     return (
       <Box flexDirection="column" gap={1}>
-        {chrome(els, t, currentTab, currentPhase, {
+        {chrome(els, t, e.surface, currentTab, currentPhase, {
           onTab: select,
           onLanguage: act('language', () => toggleLanguage($)),
           onClose: act('close', () => closePane($)),
@@ -632,7 +639,7 @@ export const register: Register = (on, options) => {
           })
         ) : (
           <Box key="games" flexDirection="column" gap={1}>
-            {gameSelector(els, t, currentGame, pickGame, newGame)}
+            {gameSelector(els, t, e.surface, currentGame, pickGame, newGame)}
             {currentGame === 'memory' && memoryState ? (
               memoryView(els, t, memoryState, now, cardIndex =>
                 act('flip', () => flipCard($, cardIndex))(),

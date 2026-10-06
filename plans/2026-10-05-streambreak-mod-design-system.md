@@ -412,13 +412,33 @@ $.ui.open({ id: PANE, title: 'streambreak', rows: 20, columns: 40, closeOnEscape
       - 영어 `legacyHooks`에서 제품 이름을 빼 80자 규칙과 "토스트에 streambreak를 반복하지 않는다" 주석에 맞췄다.
       - 오목 차례 문구 단언을 추가했다(F11).
     - 범위 밖으로 남긴 것: 새로고침이 예외로 끝나고 캐시도 없으면 오프라인이 아니라 "아직 뉴스가 없어요"로 보인다(`register.tsx` catch 경로, D2 이전부터 있던 동작).
-- [ ] **D3 레이아웃 고정.**
-  - StatusSlot을 항상 1줄로 그린다. 완료는 테두리 없는 1줄이다.
-  - GameSelector와 GameStatus에 `flexWrap`을 준다.
-  - `$.ui.open`에 `rows`, `columns`, `closeOnEscape`를 넣는다.
+- [x] **D3 레이아웃 고정.** (done · verified: 아래 결과 + code-reviewer COMMENT(사실상 APPROVE), 지적 반영 · 데스크탑에서 대기 줄 높이를 눈으로 보는 확인은 D6 사람 확인으로 넘김)
+  - StatusSlot을 항상 1줄로 그린다.
+    - 완료: 테두리 없는 `success` bold 1줄, key `banner`
+    - 작업 중 / 대기: dim 1줄, key `status`. 대기는 공백이다.
+  - 헤더, GameSelector, 지뢰 GameStatus 행에 `flexWrap`과 `columnGap={1}`을 준다(D0: `gap`을 쓰면 줄이 넘어갈 때 빈 줄이 생긴다).
+  - `$.ui.open`에 `rows: 20`, `columns: 40`, `closeOnEscape: true`를 넣는다.
+  - 결정 기록의 두 항목도 여기서 적용했다.
+    - 헤더는 `☕`만 둔다.
+    - 터미널의 선택된 탭과 게임에 `› ` 접두를 붙인다(`theme.ts`의 `selectedLabel(surface, label)`). 그래서 `chrome`과 `gameSelector`가 `surface`를 받는다.
+  - 핫키는 넣지 않았다(사용자 결정).
   - 검증 테스트:
-    - phase가 working에서 done으로 바뀌어도 게임 판보다 위에 있는 줄 수가 같다.
-    - `lifecycle.test.ts:108` `bannerShown()`과 `games-ui.test.ts:210`은 key `banner`로 찾는다. 그래서 완료 줄만 key `banner`를 쓰고, 작업 중 줄과 빈 줄은 key `status`를 쓴다. 이렇게 하지 않으면 슬롯이 늘 있어서 배너가 항상 보이는 것으로 판정된다.
+    - `lifecycle.test.ts`의 D3 상태 줄 테스트: chrome의 자식이 대기, 작업 중, 완료에서 모두 2개다(터미널과 데스크탑).
+    - `lifecycle.test.ts`의 D3 선택 표시 테스트: 터미널은 `› News`, 데스크탑은 `News`다.
+    - `pane.test.ts`의 F4: open 인자에 `rows`, `columns`, `closeOnEscape`가 들어 있다.
+    - `language.test.ts`: 탭 라벨 기대값 8곳을 `› ` 접두로 바꿨다.
+    - `bannerShown()`(key `banner`)은 그대로 동작한다.
+  - 결과(2026-10-06):
+    - `claude plugin test` 134/134(2.1.286), `validate` 통과, `tsc` 0, `bun run check` 경고 32
+    - V8 diff 비어 있음
+    - 변이 검사:
+      - 대기 상태 줄을 지우면 D3 상태 줄 테스트가 실패한다.
+      - `rows`를 지우면 F4 테스트가 실패한다.
+  - 리뷰 반영:
+    - 대기 줄은 NBSP(`\u00a0`)와 `minHeight={1}`로 그린다. DOM 렌더러에서 공백만 있는 줄이 0높이로 접히는 것을 막는다.
+    - 선택되지 않은 탭과 게임 라벨도 터미널에서 2칸을 비워 둔다(`selectableLabel`). 선택이 바뀌어도 버튼이 움직이지 않는다.
+    - `›`를 `GLYPHS.selected`로 옮겼다.
+    - 상태 줄 테스트를 3표면 × 3상태로 넓혔다.
 - [ ] **D4 게임 판 색과 기호.**
   - 지뢰의 열린 칸과 오목의 돌을 색 `Text`로 그린다.
   - AI의 마지막 수는 bold와 underline으로 표시한다.

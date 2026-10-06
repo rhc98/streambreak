@@ -67,15 +67,18 @@ for (const surface of SURFACES) {
 
 test('F4: /streambreak opens the pane', async ($, on) => {
   const sim = quietEngine(on)
-  const opened: string[] = []
+  const opened: unknown[] = []
   on('ui.open', (_, e) => {
-    opened.push(e.id)
+    opened.push(e)
     return { value: { isPlaced: true } }
   })
 
   const result = await runCommand($)
 
-  expect(opened).toEqual([PANE])
+  // D3: room for Gomoku and the chrome inline, for Memory and the header when docked.
+  expect(opened).toEqual([
+    expect.objectContaining({ id: PANE, rows: 20, columns: 40, closeOnEscape: true }),
+  ])
   expect(sim.toasts).toHaveLength(0)
   expect(result).toMatchObject({ text: expect.stringContaining('opened') })
 })

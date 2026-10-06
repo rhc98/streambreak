@@ -6,7 +6,7 @@ import type { Elements, RenderSurface } from 'claude-code'
 import type { NewsItem, Phase, Tab } from '../types'
 import { cleanText, safeHref, timeAgo } from './feed'
 import type { Strings } from './i18n'
-import { tone } from './theme'
+import { selectableLabel, tone } from './theme'
 
 type Els = Elements[RenderSurface]
 
@@ -48,29 +48,56 @@ export type ChromeHandlers = {
   onClose: () => void
 }
 
-/** Title and tabs on the left, language and close on the right; banner and status below. */
-export const chrome = (els: Els, t: Strings, tab: Tab, phase: Phase, on: ChromeHandlers) => {
-  const { Box, Text, Button } = els
+/** One status row, always drawn, so a phase change never moves the board under the pointer. */
+const statusSlot = (els: Els, t: Strings, phase: Phase) => {
+  const { Box, Text } = els
+  if (phase === 'done') {
+    return (
+      <Box key="banner">
+        <Text bold color={tone.success}>
+          {t.done}
+        </Text>
+      </Box>
+    )
+  }
   const isWorking = phase === 'working' || phase === 'suggested'
+  return (
+    <Box key="status" minHeight={1}>
+      <Text dimColor>{isWorking ? t.working : '\u00a0'}</Text>
+    </Box>
+  )
+}
+
+/** The mark and tabs on the left, language and close on the right; the status row below. */
+export const chrome = (
+  els: Els,
+  t: Strings,
+  surface: RenderSurface,
+  tab: Tab,
+  phase: Phase,
+  on: ChromeHandlers,
+) => {
+  const { Box, Text, Button } = els
+  const tabLabel = (name: Tab) => selectableLabel(surface, t[name], tab === name)
 
   return (
     <Box key="chrome" flexDirection="column" gap={1}>
-      <Box flexDirection="row" justifyContent="space-between" flexWrap="wrap" gap={1}>
+      <Box flexDirection="row" justifyContent="space-between" flexWrap="wrap" columnGap={1}>
         <Box flexDirection="row" gap={1} alignItems="center">
-          <Text bold>☕ streambreak</Text>
+          <Text>☕</Text>
           <Button
             key="tab:news"
             variant={tab === 'news' ? 'primary' : 'secondary'}
             onPress={on.onTab('news')}
           >
-            {t.news}
+            {tabLabel('news')}
           </Button>
           <Button
             key="tab:games"
             variant={tab === 'games' ? 'primary' : 'secondary'}
             onPress={on.onTab('games')}
           >
-            {t.games}
+            {tabLabel('games')}
           </Button>
         </Box>
         <Box flexDirection="row" gap={1}>
@@ -82,14 +109,7 @@ export const chrome = (els: Els, t: Strings, tab: Tab, phase: Phase, on: ChromeH
           </Button>
         </Box>
       </Box>
-      {phase === 'done' && (
-        <Box key="banner" borderStyle="round" borderColor={tone.success} paddingX={1}>
-          <Text bold color={tone.success}>
-            {t.done}
-          </Text>
-        </Box>
-      )}
-      {isWorking && <Text dimColor>{t.working}</Text>}
+      {statusSlot(els, t, phase)}
     </Box>
   )
 }

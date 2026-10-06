@@ -4,7 +4,7 @@ import type { Elements, RenderSurface } from 'claude-code'
 
 import type { GameKind, GomokuState, MemoryState, MineCell, MinesState } from '../../types'
 import type { Strings } from '../i18n'
-import { GLYPHS, tone } from '../theme'
+import { GLYPHS, selectableLabel, tone } from '../theme'
 import { SIZE } from './gomoku'
 import { elapsedSeconds, SYMBOLS } from './memory'
 import { flagsPlaced, MINES } from './minesweeper'
@@ -24,6 +24,7 @@ export const cellName = (r: number, c: number) => `${COLUMNS[c] ?? '?'}${r + 1}`
 export const gameSelector = (
   els: Els,
   t: Strings,
+  surface: RenderSurface,
   current: GameKind | null,
   onPick: (game: GameKind) => void,
   onNew: () => void,
@@ -31,14 +32,14 @@ export const gameSelector = (
   const { Box, Button } = els
 
   return (
-    <Box flexDirection="row" gap={1}>
+    <Box flexDirection="row" flexWrap="wrap" columnGap={1}>
       {AVAILABLE_GAMES.map(game => (
         <Button
           key={`game:${game}`}
           variant={current === game ? 'primary' : 'secondary'}
           onPress={() => onPick(game)}
         >
-          {t[game]}
+          {selectableLabel(surface, t[game], current === game)}
         </Button>
       ))}
       <Button key="game:new" onPress={onNew}>
@@ -183,7 +184,7 @@ export const minesView = (
       borderColor={tone.border}
       paddingX={1}
     >
-      <Box flexDirection="row" gap={1}>
+      <Box flexDirection="row" flexWrap="wrap" columnGap={1}>
         <Text
           bold={state.status !== 'playing'}
           color={

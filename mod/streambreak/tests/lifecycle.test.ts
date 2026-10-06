@@ -436,3 +436,41 @@ test('F17: the pane says Claude is working only while a main turn runs', async (
   await $.turn.complete(complete('t1'))
   expect(await working()).toBe(false)
 })
+
+test('D3: the status row is always one row, so a phase change never moves the board', async ($, on) => {
+  const sim = engine($, on)
+  await $.session.start(start)
+  const rows = async (surface: RenderSurface) => {
+    const pane = await mountPane($, surface)
+    const chrome = await pane.find({ key: 'chrome' })
+    await pane.unmount()
+    return chrome?.children.length
+  }
+
+  const surfaces = ['terminal', 'desktop', 'mobile'] as const
+  sim.openPane()
+  for (const surface of surfaces) expect(await rows(surface)).toBe(2) // idle
+  await $.turn.start({ text: 'go', turnId: 't1' })
+  await sim.clock.advance(THRESHOLD_MS)
+  for (const surface of surfaces) expect(await rows(surface)).toBe(2) // working
+  await $.turn.complete(complete('t1'))
+  expect(await bannerShown($)).toBe(true)
+  for (const surface of surfaces) expect(await rows(surface)).toBe(2) // done
+})
+
+test('D3: the selected tab carries a mark on the terminal; other surfaces fill it natively', async ($, on) => {
+  engine($, on)
+  await $.session.start(start)
+  const label = async (surface: RenderSurface) => {
+    const pane = await mountPane($, surface)
+    const tab = await pane.find({ key: 'tab:news' })
+    await pane.unmount()
+    return tab?.text
+  }
+
+  expect(await label('terminal')).toBe('› News')
+  expect(await label('desktop')).toBe('News')
+  const pane = await mountPane($)
+  expect((await pane.find({ key: 'tab:games' }))?.text).toBe('  Games') // keeps the mark's room
+  await pane.unmount()
+})

@@ -141,7 +141,7 @@ test(
     const pane = await mount($)
 
     expect(sim.fetched).toEqual([GEEKNEWS])
-    expect((await pane.find({ key: 'tab:news' }))?.text).toBe('뉴스')
+    expect((await pane.find({ key: 'tab:news' }))?.text).toBe('› 뉴스')
     expect(await hrefs(pane)).toContain('https://example.com/gn-1')
   },
 )
@@ -157,12 +157,12 @@ test('F13: the pane toggle switches language, refetches, restarts at the top and
 
   await pane.press({ key: 'lang' })
   expect(sim.fetched).toContain(GEEKNEWS)
-  expect((await pane.find({ key: 'tab:news' }))?.text).toBe('뉴스')
+  expect((await pane.find({ key: 'tab:news' }))?.text).toBe('› 뉴스')
   expect((await hrefs(pane))[0]).toBe('https://example.com/gn-1')
 
   // A later load (new session, same store) keeps the override.
   await $.session.start(start)
-  expect((await pane.find({ key: 'tab:news' }))?.text).toBe('뉴스')
+  expect((await pane.find({ key: 'tab:news' }))?.text).toBe('› 뉴스')
 })
 
 test(
@@ -175,11 +175,11 @@ test(
     await $.session.start(start)
     await open($)
     const pane = await mount($)
-    expect((await pane.find({ key: 'tab:news' }))?.text).toBe('뉴스')
+    expect((await pane.find({ key: 'tab:news' }))?.text).toBe('› 뉴스')
 
     // The next load must not bring the stale English override back.
     await $.session.start(start)
-    expect((await pane.find({ key: 'tab:news' }))?.text).toBe('뉴스')
+    expect((await pane.find({ key: 'tab:news' }))?.text).toBe('› 뉴스')
   },
 )
 
@@ -205,7 +205,7 @@ test('F13: two quick presses flip twice and end where they began', async ($, on)
   const pane = await mount($)
   await Promise.all([pane.press({ key: 'lang' }), pane.press({ key: 'lang' })])
 
-  expect((await pane.find({ key: 'tab:news' }))?.text).toBe('News')
+  expect((await pane.find({ key: 'tab:news' }))?.text).toBe('› News')
 })
 
 test(
@@ -217,7 +217,7 @@ test(
     await open($)
     const pane = await mount($)
 
-    expect((await pane.find({ key: 'tab:news' }))?.text).toBe('뉴스')
+    expect((await pane.find({ key: 'tab:news' }))?.text).toBe('› 뉴스')
   },
 )
 
@@ -246,5 +246,5 @@ test('F13: a reload while the toggled news still loads keeps the new language', 
   await sim.clock.advance(100)
   await $.session.start(start) // a reload before it lands
 
-  expect((await pane.find({ key: 'tab:news' }))?.text).toBe('뉴스')
+  expect((await pane.find({ key: 'tab:news' }))?.text).toBe('› 뉴스')
 })
