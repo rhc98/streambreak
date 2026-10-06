@@ -4,6 +4,7 @@ import type { Elements, RenderSurface } from 'claude-code'
 
 import type { GameKind, GomokuState, MemoryState, MineCell, MinesState } from '../../types'
 import type { Strings } from '../i18n'
+import { GLYPHS, tone } from '../theme'
 import { SIZE } from './gomoku'
 import { elapsedSeconds, SYMBOLS } from './memory'
 import { flagsPlaced, MINES } from './minesweeper'
@@ -72,12 +73,12 @@ export const memoryView = (
       flexDirection="column"
       gap={1}
       borderStyle="round"
-      borderColor="gray"
+      borderColor={tone.border}
       paddingX={1}
     >
       <Text
         bold={state.finishedAt !== null}
-        color={state.finishedAt !== null ? 'green' : undefined}
+        color={state.finishedAt !== null ? tone.success : undefined}
       >
         {state.finishedAt !== null
           ? t.memoryDone(state.moves, seconds)
@@ -89,7 +90,7 @@ export const memoryView = (
             const isShown = card.isFaceUp || card.isMatched
             return (
               <Button key={key} dimColor={card.isMatched} onPress={() => onFlip(index)}>
-                {isShown ? (SYMBOLS[card.symbol] ?? '?') : '❓'}
+                {isShown ? (SYMBOLS[card.symbol] ?? '?') : GLYPHS.cardBack}
               </Button>
             )
           })}
@@ -99,11 +100,8 @@ export const memoryView = (
   )
 }
 
-// ASCII on purpose: `·●○` are East Asian Ambiguous and draw two columns wide in CJK terminals,
-// which would shift the grid and the click targets. Empty · person · AI.
-export const RESULT_COLOR = { black: 'green', white: 'red', draw: 'yellow' } as const
-
-const STONES = ['+', 'X', 'O'] as const
+// A draw is neither side's: the default color, bold like the other results.
+export const RESULT_COLOR = { black: tone.success, white: tone.danger, draw: undefined } as const
 
 export const gomokuView = (
   els: Els,
@@ -122,7 +120,13 @@ export const gomokuView = (
   }))
 
   return (
-    <Box key="gomoku" flexDirection="column" borderStyle="round" borderColor="gray" paddingX={1}>
+    <Box
+      key="gomoku"
+      flexDirection="column"
+      borderStyle="round"
+      borderColor={tone.border}
+      paddingX={1}
+    >
       <Text
         bold={state.result !== null}
         color={state.result ? RESULT_COLOR[state.result] : undefined}
@@ -142,7 +146,7 @@ export const gomokuView = (
           <Text dimColor>{line.label}</Text>
           {line.cells.map(({ stone, r, c, key }) => (
             <Button key={key} plain dimColor={stone === 0} onPress={() => onPlay(r, c)}>
-              {STONES[stone]}
+              {GLYPHS.stones[stone]}
             </Button>
           ))}
         </Box>
@@ -151,12 +155,11 @@ export const gomokuView = (
   )
 }
 
-// ASCII for the same reason as Gomoku: one column everywhere, so the grid and clicks line up.
 const mineLabel = (cell: MineCell) => {
-  if (cell.isFlagged && !cell.isRevealed) return 'F'
-  if (!cell.isRevealed) return '#'
-  if (cell.isMine) return '*'
-  return cell.adjacent === 0 ? '.' : String(cell.adjacent)
+  if (cell.isFlagged && !cell.isRevealed) return GLYPHS.mineFlag
+  if (!cell.isRevealed) return GLYPHS.mineHidden
+  if (cell.isMine) return GLYPHS.mine
+  return cell.adjacent === 0 ? GLYPHS.mineEmpty : String(cell.adjacent)
 }
 
 export const minesView = (
@@ -177,13 +180,19 @@ export const minesView = (
       key="minesweeper"
       flexDirection="column"
       borderStyle="round"
-      borderColor="gray"
+      borderColor={tone.border}
       paddingX={1}
     >
       <Box flexDirection="row" gap={1}>
         <Text
           bold={state.status !== 'playing'}
-          color={state.status === 'won' ? 'green' : state.status === 'lost' ? 'red' : undefined}
+          color={
+            state.status === 'won'
+              ? tone.success
+              : state.status === 'lost'
+                ? tone.danger
+                : undefined
+          }
         >
           {state.status === 'playing'
             ? t.minesStatus(MINES - flagsPlaced(state))

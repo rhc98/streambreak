@@ -14,3 +14,11 @@ test('F17: clip cuts to the column budget with an ellipsis, never splitting a wi
   expect(columnsOf(clip('한국어 제목이 아주 깁니다', 10))).toBeLessThanOrEqual(10)
   expect(clip('한국어 제목이 아주 깁니다', 10).endsWith('…')).toBe(true)
 })
+
+test('D1: symbols drawn as emoji count two columns; narrow symbols stay one', () => {
+  expect(columnsOf('☕')).toBe(2)
+  expect(columnsOf('⚡')).toBe(2)
+  expect(columnsOf('❓')).toBe(2)
+  expect(columnsOf('✓ ⎿')).toBe(3)
+  expect(clip('☕☕☕', 4)).toBe('☕…')
+})

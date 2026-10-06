@@ -66,6 +66,7 @@ brew install streambreak
 Port of streambreak to a Claude Mod (function-hooks plugin that draws a Pane/Toast inside Claude Code terminal and desktop). F1–F15 done, F16 in progress (GitHub install needs the branch on master). The plan records what is verified and what is still a manual check.
 
 - **Plan / progress SoT:** `plans/2026-10-03-streambreak-claude-mod-plan.md` (goalplan checklist). Read it first. Mark an item `[x]` only with a `verified:` basis.
+- **Design SoT:** `plans/2026-10-05-streambreak-mod-design-system.md` — tone, color roles (Claude Code theme keys, no hex literals), glyph sets per surface, copy voice (Korean 해요체). UI changes follow it; its D items track the rollout.
 - **Canonical source:** `mod/streambreak/` in this repo (create it there directly). `~/.claude/dev-mods/<session-id>/…`, installed plugin caches and remote checkouts are derived copies — never edit them, and never commit absolute home paths.
 - **Do not touch** the existing Tauri app (`src/`, `src-tauri/`); the Mod is additive.
 - **Dev loop (verified commands only):** `claude plugin validate mod/streambreak`, `claude plugin test mod/streambreak`, `claude --plugin-dir mod/streambreak`. Desktop session (plan F1(c), verified): load the `plugin-authoring` skill, symlink the canonical folder into that session's dev-mods folder (`ln -s "$PWD/mod/streambreak" ~/.claude/dev-mods/<session-id>/streambreak`), answer "Enable for this session". Edits to the canonical folder do **not** auto-reload through the symlink — run `/reload-plugins` after each change.

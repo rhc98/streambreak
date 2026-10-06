@@ -6,6 +6,7 @@ import type { Elements, RenderSurface } from 'claude-code'
 import type { NewsItem, Phase, Tab } from '../types'
 import { cleanText, safeHref, timeAgo } from './feed'
 import type { Strings } from './i18n'
+import { tone } from './theme'
 
 type Els = Elements[RenderSurface]
 
@@ -20,8 +21,15 @@ const isWide = (code: number) =>
   (code >= 0xffe0 && code <= 0xffe6) ||
   (code >= 0x1f300 && code <= 0x1faff)
 
+// Symbols drawn as emoji by default (☕ ⚡ ❓ ✅ ⭐ …) are wide too, wherever they sit. A flag's two
+// regional-indicator letters count 2 each (4 for the pair, 2 drawn): wide errs safe for clip().
+const EMOJI = /\p{Emoji_Presentation}/u
+
 export const columnsOf = (text: string) =>
-  Array.from(text).reduce((width, char) => width + (isWide(char.codePointAt(0) ?? 0) ? 2 : 1), 0)
+  Array.from(text).reduce(
+    (width, char) => width + (isWide(char.codePointAt(0) ?? 0) || EMOJI.test(char) ? 2 : 1),
+    0,
+  )
 
 /** `text` cut to `width` columns with an ellipsis; unchanged when it fits. */
 export const clip = (text: string, width: number) => {
@@ -49,9 +57,7 @@ export const chrome = (els: Els, t: Strings, tab: Tab, phase: Phase, on: ChromeH
     <Box key="chrome" flexDirection="column" gap={1}>
       <Box flexDirection="row" justifyContent="space-between" flexWrap="wrap" gap={1}>
         <Box flexDirection="row" gap={1} alignItems="center">
-          <Text bold color="cyan">
-            ☕ streambreak
-          </Text>
+          <Text bold>☕ streambreak</Text>
           <Button
             key="tab:news"
             variant={tab === 'news' ? 'primary' : 'secondary'}
@@ -77,8 +83,8 @@ export const chrome = (els: Els, t: Strings, tab: Tab, phase: Phase, on: ChromeH
         </Box>
       </Box>
       {phase === 'done' && (
-        <Box key="banner" borderStyle="round" borderColor="green" paddingX={1}>
-          <Text bold color="green">
+        <Box key="banner" borderStyle="round" borderColor={tone.success} paddingX={1}>
+          <Text bold color={tone.success}>
             {t.done}
           </Text>
         </Box>
@@ -123,7 +129,7 @@ export const newsView = (els: Els, t: Strings, view: NewsView) => {
         <Text dimColor>
           {view.items.length > 0 ? t.newsPosition(position, view.items.length) : ''}
         </Text>
-        {view.isOffline && <Text color="yellow">{t.offline}</Text>}
+        {view.isOffline && <Text color={tone.warning}>{t.offline}</Text>}
       </Box>
       {view.items.length === 0 && <Text dimColor>{view.isLoading ? t.loading : t.newsEmpty}</Text>}
       {featured && (
@@ -131,7 +137,7 @@ export const newsView = (els: Els, t: Strings, view: NewsView) => {
           key={`card:${featured.url || featured.title}`}
           flexDirection="column"
           borderStyle="round"
-          borderColor="cyan"
+          borderColor={tone.border}
           paddingX={1}
         >
           {linkOrText(els, featured, cleanText(`${featured.icon} ${featured.title}`))}
