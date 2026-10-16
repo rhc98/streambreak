@@ -7,7 +7,7 @@ import type { Strings } from '../i18n'
 import { type Glyphs, MINE_COLOR, selectableLabel, tone } from '../theme'
 import { SIZE } from './gomoku'
 import { elapsedSeconds, SYMBOLS } from './memory'
-import { flagsPlaced, MINES } from './minesweeper'
+import { COLS, flagsPlaced, MINES } from './minesweeper'
 
 type Els = Elements[RenderSurface]
 
@@ -50,10 +50,19 @@ export const gameSelector = (
 }
 
 /** The narrowest pane body, in columns, each board fits in: grid, border and padding. */
-export const BOARD_COLUMNS = { memory: 31, minesweeper: 19, gomoku: 24 } as const satisfies Record<
-  GameKind,
-  number
->
+const TERMINAL_COLUMNS = { memory: 31, minesweeper: 19, gomoku: 24 } as const
+// In slots: 8 cells; a label and 9 points. Memory's cards are Buttons alike and keep no slots.
+const SLOTS = { minesweeper: COLS, gomoku: SIZE + 1 } as const
+
+export const boardColumns = (game: GameKind, g: Glyphs) =>
+  g.cellWidth && game !== 'memory' ? SLOTS[game] * g.cellWidth + 4 : TERMINAL_COLUMNS[game]
+
+/** Props for one board slot: fixed and centered where glyph widths differ, nothing otherwise. */
+const slot = (g: Glyphs) =>
+  g.cellWidth ? { width: g.cellWidth, justifyContent: 'center' as const } : {}
+
+/** Cells one column apart on a terminal; slots side by side elsewhere. */
+const rowGap = (g: Glyphs) => (g.cellWidth ? 0 : 1)
 
 /** Shown once a game is over, beside its result, so the next round is one press away. */
 const newGameButton = (els: Els, t: Strings, onNew: () => void) => {
@@ -145,15 +154,22 @@ export const gomokuView = (
   // color); the AI's last move is underlined, since the focus ring already inverts.
   const cell = (stone: Stone, r: number, c: number, key: string) => {
     if (stone === 0 && state.result === null) {
-      return (
+      const point = (
         <Button key={key} plain dimColor onPress={() => onPlay(r, c)}>
           {g.stones[0]}
         </Button>
       )
+      return g.cellWidth ? (
+        <Box key={`${key}:slot`} {...slot(g)}>
+          {point}
+        </Box>
+      ) : (
+        point
+      )
     }
     const isLastAi = r === lr && c === lc && stone === 2
     return (
-      <Box key={key}>
+      <Box key={key} {...slot(g)}>
         <Text
           bold={stone !== 0}
           dimColor={stone === 0}
@@ -183,17 +199,21 @@ export const gomokuView = (
         </Text>
         {state.result !== null && newGameButton(els, t, onNew)}
       </Box>
-      <Box key="gomoku:header" flexDirection="row" gap={1}>
-        <Text dimColor>{'  '}</Text>
+      <Box key="gomoku:header" flexDirection="row" gap={rowGap(g)}>
+        <Box {...slot(g)}>
+          <Text dimColor>{g.cellWidth ? '\u00a0' : '  '}</Text>
+        </Box>
         {header.map(column => (
-          <Text key={column.key} dimColor>
-            {column.label}
-          </Text>
+          <Box key={column.key} {...slot(g)}>
+            <Text dimColor>{column.label}</Text>
+          </Box>
         ))}
       </Box>
       {grid.map(line => (
-        <Box key={line.key} flexDirection="row" gap={1}>
-          <Text dimColor>{line.label}</Text>
+        <Box key={line.key} flexDirection="row" gap={rowGap(g)}>
+          <Box {...slot(g)}>
+            <Text dimColor>{g.cellWidth ? line.label.trim() : line.label}</Text>
+          </Box>
           {line.cells.map(({ stone, r, c, key }) => cell(stone, r, c, key))}
         </Box>
       ))}
@@ -221,22 +241,29 @@ export const minesView = (
   // Everything else is Text: open cells carry the number colors, and a finished board is inert.
   const drawCell = (cell: MineCell, r: number, c: number, key: string) => {
     if (!cell.isRevealed && isPlaying) {
-      return (
+      const shut = (
         <Button key={key} plain onPress={() => onPress(r, c)}>
           {cell.isFlagged ? g.mineFlag : g.mineHidden}
         </Button>
       )
+      return g.cellWidth ? (
+        <Box key={`${key}:slot`} {...slot(g)}>
+          {shut}
+        </Box>
+      ) : (
+        shut
+      )
     }
     if (!cell.isRevealed) {
       return (
-        <Box key={key}>
+        <Box key={key} {...slot(g)}>
           <Text dimColor>{cell.isFlagged ? g.mineFlag : g.mineHidden}</Text>
         </Box>
       )
     }
     if (cell.isMine) {
       return (
-        <Box key={key}>
+        <Box key={key} {...slot(g)}>
           <Text bold color={tone.danger}>
             {g.mine}
           </Text>
@@ -244,7 +271,7 @@ export const minesView = (
       )
     }
     return (
-      <Box key={key}>
+      <Box key={key} {...slot(g)}>
         {cell.adjacent === 0 ? (
           <Text dimColor>{g.mineEmpty}</Text>
         ) : (
@@ -288,7 +315,7 @@ export const minesView = (
         )}
       </Box>
       {grid.map(line => (
-        <Box key={line.key} flexDirection="row" gap={1}>
+        <Box key={line.key} flexDirection="row" gap={rowGap(g)}>
           {line.cells.map(({ cell, r, c, key }) => drawCell(cell, r, c, key))}
         </Box>
       ))}

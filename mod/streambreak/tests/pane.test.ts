@@ -3,7 +3,7 @@ import type { Engine } from 'claude-code/testing'
 import { expect, mock, test } from 'claude-code/testing'
 
 const PANE = 'streambreak'
-const SURFACES = ['terminal', 'desktop', 'mobile'] as const
+const SURFACES = ['terminal', 'desktop', 'mobile', 'vscode'] as const
 
 const paneProps = {
   title: PANE,

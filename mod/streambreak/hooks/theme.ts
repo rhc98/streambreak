@@ -52,6 +52,12 @@ export type Glyphs = {
   /** Gomoku: empty · the person · the AI. */
   stones: readonly [string, string, string]
   cardBack: string
+  /**
+   * The width of one board slot where glyph widths differ (a proportional font, an emoji beside a
+   * digit): every cell, label and spacer gets a centered slot this wide. Absent, cells sit one
+   * column apart, which a terminal's fixed grid keeps aligned.
+   */
+  cellWidth?: number
 }
 
 // Terminal glyphs. One column wide in every terminal (the board is a grid of one-glyph controls);
@@ -66,8 +72,9 @@ const ASCII: Glyphs = {
   cardBack: '❓',
 }
 
-// The other surfaces draw each cell as a control of its own, so wider glyphs cannot shift the grid.
-// An empty open cell is a no-break space: a plain space may collapse to nothing in a web view.
+// The other surfaces draw text in a proportional font, so cells sit in fixed-width slots (D6: with
+// a gap alone, 💣 / ■ / digits / blanks drifted apart). An empty open cell is a no-break space: a
+// plain space may collapse to nothing in a web view.
 const RICH: Glyphs = {
   mineHidden: '■',
   mineFlag: '🚩',
@@ -75,6 +82,7 @@ const RICH: Glyphs = {
   mineEmpty: '\u00a0',
   stones: ['·', '●', '○'],
   cardBack: '❓',
+  cellWidth: 3,
 }
 
 export const glyphs = (surface: RenderSurface): Glyphs => (surface === 'terminal' ? ASCII : RICH)

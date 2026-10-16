@@ -7,7 +7,7 @@ import { GN_ATOM, HN_RSS, TC_RSS } from './fixtures'
 const PANE = 'streambreak'
 const ROTATION_MS = 15_000
 const TTL_MS = 30 * 60_000
-const SURFACES = ['terminal', 'desktop', 'mobile'] as const
+const SURFACES = ['terminal', 'desktop', 'mobile', 'vscode'] as const
 
 const BODIES: Record<string, string> = {
   'https://hnrss.org/frontpage': HN_RSS,

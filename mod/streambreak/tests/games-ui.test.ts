@@ -2,13 +2,13 @@ import type { On } from 'claude-code'
 import type { Engine, Plugin } from 'claude-code/testing'
 import { expect, mock, test } from 'claude-code/testing'
 
-import { BOARD_COLUMNS } from '../hooks/games/views'
+import { boardColumns } from '../hooks/games/views'
 import { glyphs, MINE_COLOR } from '../hooks/theme'
 
 const ASCII = glyphs('terminal')
 
 const PANE = 'streambreak'
-const SURFACES = ['terminal', 'desktop', 'mobile'] as const
+const SURFACES = ['terminal', 'desktop', 'mobile', 'vscode'] as const
 const FLIP_BACK_MS = 600
 const HIDDEN = '❓'
 
@@ -474,22 +474,57 @@ test("D4: the AI's last stone is underlined, not inverted", async ($, on) => {
 })
 
 for (const game of ['memory', 'minesweeper', 'gomoku'] as const) {
-  test(`D4: ${game} draws at exactly its width and asks for room one column below`, async ($, on) => {
-    engine(on)
-    await open($)
-    const draws = async (columns: number) => {
-      const pane = await mount($, 'terminal', columns)
-      await pane.press({ key: 'tab:games' })
-      await pane.press({ key: `game:${game}` })
-      const asks = (await pane.find({ text: /Widen the pane/ })) !== undefined
-      await pane.unmount()
-      return !asks
-    }
+  for (const surface of ['terminal', 'desktop'] as const) {
+    test(`D4 ${surface}: ${game} draws at exactly its width and asks for room one column below`, async ($, on) => {
+      engine(on)
+      await open($)
+      const width = boardColumns(game, glyphs(surface))
+      const draws = async (columns: number) => {
+        const pane = await mount($, surface, columns)
+        await pane.press({ key: 'tab:games' })
+        await pane.press({ key: `game:${game}` })
+        const asks = (await pane.find({ text: /Widen the pane/ })) !== undefined
+        await pane.unmount()
+        return !asks
+      }
 
-    expect(await draws(BOARD_COLUMNS[game])).toBe(true)
-    expect(await draws(BOARD_COLUMNS[game] - 1)).toBe(false)
-  })
+      expect(await draws(width)).toBe(true)
+      expect(await draws(width - 1)).toBe(false)
+    })
+  }
 }
+
+test('D6: off the terminal every board cell sits in a fixed, centered slot', async ($, on) => {
+  engine(on)
+  const pane = await openGame($, 'minesweeper', 'desktop')
+  const width = glyphs('desktop').cellWidth
+  expect((await pane.find({ key: 'mines:0:0:slot' }))?.props).toMatchObject({
+    width,
+    justifyContent: 'center',
+  })
+  await pane.press({ key: 'mines:4:4' })
+  expect((await pane.find({ key: 'mines:4:4' }))?.props).toMatchObject({ width })
+
+  await pane.press({ key: 'game:gomoku' })
+  for (const key of ['gomoku:col:a', 'gomoku:4:4:slot']) {
+    expect((await pane.find({ key }))?.props).toMatchObject({ width, justifyContent: 'center' })
+  }
+  await pane.unmount()
+
+  const terminal = await openGame($, 'minesweeper')
+  expect(await terminal.find({ key: 'mines:0:0:slot' })).toBeUndefined() // the grid aligns there
+})
+
+test('D6: the narrowest pane each board fits, per surface', () => {
+  const terminal = glyphs('terminal')
+  const desktop = glyphs('desktop')
+  expect(
+    ['memory', 'minesweeper', 'gomoku'].map(game => boardColumns(game as never, terminal)),
+  ).toEqual([31, 19, 24])
+  expect(
+    ['memory', 'minesweeper', 'gomoku'].map(game => boardColumns(game as never, desktop)),
+  ).toEqual([31, 28, 34])
+})
 
 test('D4: a finished Memory or Gomoku game offers a new game, and Gomoku goes inert', async ($, on) => {
   const sim = engine(on)

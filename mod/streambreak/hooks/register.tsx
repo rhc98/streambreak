@@ -27,7 +27,7 @@ import { FLIP_BACK_MS, flip, newMemory, settleMismatch } from './games/memory'
 import { newMines, press as pressMine, toggleMode } from './games/minesweeper'
 import {
   AVAILABLE_GAMES,
-  BOARD_COLUMNS,
+  boardColumns,
   gameSelector,
   gomokuView,
   memoryView,
@@ -650,7 +650,7 @@ export const register: Register = (on, options) => {
         ) : (
           <Box key="games" flexDirection="column" gap={1}>
             {gameSelector(els, t, e.surface, currentGame, pickGame, newGame)}
-            {currentGame && e.props.bodyColumns < BOARD_COLUMNS[currentGame] ? (
+            {currentGame && e.props.bodyColumns < boardColumns(currentGame, g) ? (
               <Text dimColor>{t.narrowGame}</Text>
             ) : currentGame === 'memory' && memoryState ? (
               memoryView(
