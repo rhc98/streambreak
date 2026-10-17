@@ -5,7 +5,15 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["src/**", "*.ts", "*.tsx", "*.json"]
+    "includes": [
+      "src/**",
+      "mod/**",
+      "!mod/*/.claude-plugin/types",
+      "!**/.omc",
+      "*.ts",
+      "*.tsx",
+      "*.json"
+    ]
   },
   "formatter": {
     "enabled": true,
@@ -47,5 +55,11 @@
       "bracketSpacing": true,
       "arrowParentheses": "asNeeded"
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["mod/**"],
+      "linter": { "rules": { "a11y": "off" } }
+    }
+  ]
 }

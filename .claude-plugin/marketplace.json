@@ -1,0 +1,14 @@
+{
+  "name": "streambreak",
+  "owner": { "name": "RHC" },
+  "metadata": {
+    "description": "streambreak as a Claude Mod: break-time news and mini games inside Claude Code"
+  },
+  "plugins": [
+    {
+      "name": "streambreak",
+      "source": "./mod/streambreak",
+      "description": "Break-time news and mini games while Claude works"
+    }
+  ]
+}

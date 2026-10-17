@@ -1,0 +1,36 @@
+{
+  "name": "streambreak",
+  "version": "0.1.0",
+  "description": "Break-time news and mini games while Claude works",
+  "author": {
+    "name": "RHC"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "threshold_seconds": {
+      "type": "number",
+      "title": "Break threshold (seconds)",
+      "description": "How long a turn runs before the break toast appears",
+      "default": 10
+    },
+    "language": {
+      "type": "string",
+      "title": "Language",
+      "description": "News sources and UI language",
+      "options": ["en", "ko"],
+      "default": "en"
+    },
+    "rotation_seconds": {
+      "type": "number",
+      "title": "News rotation (seconds)",
+      "description": "How often the news cards move on",
+      "default": 15
+    },
+    "fade_out_delay_ms": {
+      "type": "number",
+      "title": "Banner fade-out (ms)",
+      "description": "How long the 'finished' banner stays before the pane closes",
+      "default": 3000
+    }
+  }
+}

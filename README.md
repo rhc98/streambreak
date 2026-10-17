@@ -57,6 +57,38 @@ Then register Claude Code hooks:
 streambreak init
 ```
 
+## Claude Mod (inside Claude Code)
+
+streambreak also ships as a **Claude Mod**: a plugin that draws inside Claude Code itself (terminal and the desktop Code tab), with no app, daemon or hooks to install. Mods are early access in Claude Code, so behaviour may change between releases.
+
+**Install**
+
+```bash
+claude plugin marketplace add rhc98/streambreak
+claude plugin install streambreak@streambreak
+```
+
+The GitHub source works once the mod is on `master`. From a local checkout, pass its path instead: `claude plugin marketplace add /path/to/streambreak`.
+
+**Use**
+
+- When a turn runs past the threshold (10 s), a toast offers a break. It also appears as soon as Claude shows a permission dialog.
+- `/streambreak` opens the pane: a **News** tab (Hacker News + TechCrunch, or GeekNews in Korean, rotating every 15 s), a **Games** tab (Memory, Minesweeper, Gomoku), a 한국어/English toggle and Close.
+- When Claude finishes, a "finished" banner shows in the open pane, which closes after 3 s unless you are typing in it.
+
+**Settings**: `/plugin configure streambreak@streambreak` sets `threshold_seconds`, `language` (en/ko), `rotation_seconds` and `fade_out_delay_ms`. The pane's language toggle overrides `language` until you change the setting again.
+
+**With the streambreak desktop app (Tauri) also installed**: remove the three `streambreak …` hook commands that `streambreak init` added to your Claude Code `settings.json`, or both will pop up. The mod reminds you once per session while they are there.
+
+**Develop**: the source is `mod/streambreak/`. Validate and test it with the Claude Code build that the **Claude** desktop app ships (2.1.286 or later; older CLIs ignore test options):
+
+```bash
+claude plugin validate mod/streambreak
+claude plugin test mod/streambreak
+```
+
+Mod releases are tagged with `claude plugin tag mod/streambreak` (`streambreak--v<version>`). Never use a `v<version>` tag for the mod: that tag builds and publishes the streambreak desktop app.
+
 ## Development
 
 ```bash

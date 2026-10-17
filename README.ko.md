@@ -57,6 +57,38 @@ Claude Code 훅 등록:
 streambreak init
 ```
 
+## Claude Mod (Claude Code 안에서)
+
+streambreak는 **Claude Mod**로도 배포됩니다. Claude Code 안(터미널과 데스크탑 Code 탭)에 직접 그리는 플러그인이라 앱, 데몬, 훅 설치가 필요 없습니다. Mod는 Claude Code의 early access 기능이라 릴리스마다 동작이 바뀔 수 있습니다.
+
+**설치**
+
+```bash
+claude plugin marketplace add rhc98/streambreak
+claude plugin install streambreak@streambreak
+```
+
+GitHub 소스는 Mod가 `master`에 들어간 뒤부터 동작합니다. 로컬 체크아웃에서 설치하려면 경로를 넘깁니다: `claude plugin marketplace add /path/to/streambreak`.
+
+**사용**
+
+- 턴이 기준 시간(10초)을 넘기면 휴식을 제안하는 토스트가 뜹니다. Claude가 권한 창을 띄우면 바로 뜹니다.
+- `/streambreak`로 패널을 엽니다. **뉴스** 탭(Hacker News + TechCrunch, 한국어는 GeekNews, 15초마다 넘어감), **게임** 탭(메모리, 지뢰찾기, 오목), 한국어/English 전환, 닫기가 있습니다.
+- Claude가 끝나면 열린 패널에 "작업 완료" 배너가 뜨고 3초 뒤 닫힙니다. 패널에 입력 중이면 닫지 않습니다.
+
+**설정**: `/plugin configure streambreak@streambreak`에서 `threshold_seconds`, `language`(en/ko), `rotation_seconds`, `fade_out_delay_ms`를 바꿉니다. 패널의 언어 전환은 다음에 설정을 바꿀 때까지 `language`보다 우선합니다.
+
+**streambreak 데스크탑 앱(Tauri)도 설치돼 있을 때**: `streambreak init`이 Claude Code `settings.json`에 넣은 `streambreak …` 훅 명령 3개를 지우세요. 그대로 두면 둘 다 뜹니다. 훅이 남아 있는 동안 Mod가 세션마다 한 번 알려 줍니다.
+
+**개발**: 소스는 `mod/streambreak/`입니다. **Claude** 데스크탑 앱에 들어 있는 Claude Code(2.1.286 이상)로 검증하고 테스트합니다. 그 이전 CLI는 테스트 옵션을 무시합니다.
+
+```bash
+claude plugin validate mod/streambreak
+claude plugin test mod/streambreak
+```
+
+Mod 릴리스 태그는 `claude plugin tag mod/streambreak`(`streambreak--v<버전>`)로 만듭니다. Mod에는 `v<버전>` 태그를 쓰지 마세요. 그 태그는 streambreak 데스크탑 앱을 빌드하고 배포합니다.
+
 ## 개발
 
 ```bash
