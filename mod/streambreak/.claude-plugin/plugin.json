@@ -5,6 +5,10 @@
   "author": {
     "name": "RHC"
   },
+  "homepage": "https://github.com/rhc98/streambreak/tree/master/mod/streambreak",
+  "repository": "https://github.com/rhc98/streambreak",
+  "license": "MIT",
+  "keywords": ["break", "news", "games", "minesweeper", "gomoku", "mod"],
   "types": "./types/index.d.ts",
   "userConfig": {
     "threshold_seconds": {

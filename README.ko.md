@@ -68,7 +68,7 @@ claude plugin marketplace add rhc98/streambreak
 claude plugin install streambreak@streambreak
 ```
 
-GitHub 소스는 Mod가 `master`에 들어간 뒤부터 동작합니다. 로컬 체크아웃에서 설치하려면 경로를 넘깁니다: `claude plugin marketplace add /path/to/streambreak`.
+로컬 체크아웃에서 설치하려면 경로를 넘깁니다: `claude plugin marketplace add /path/to/streambreak`.
 
 **사용**
 
@@ -87,7 +87,7 @@ claude plugin validate mod/streambreak
 claude plugin test mod/streambreak
 ```
 
-Mod 릴리스 태그는 `claude plugin tag mod/streambreak`(`streambreak--v<버전>`)로 만듭니다. Mod에는 `v<버전>` 태그를 쓰지 마세요. 그 태그는 streambreak 데스크탑 앱을 빌드하고 배포합니다.
+Mod는 MIT 라이선스입니다(`mod/streambreak/LICENSE`). Mod 릴리스 태그는 `claude plugin tag mod/streambreak`(`streambreak--v<버전>`)로 만듭니다. Mod에는 `v<버전>` 태그를 쓰지 마세요. 그 태그는 streambreak 데스크탑 앱을 빌드하고 배포합니다.
 
 ## 개발
 

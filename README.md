@@ -68,7 +68,7 @@ claude plugin marketplace add rhc98/streambreak
 claude plugin install streambreak@streambreak
 ```
 
-The GitHub source works once the mod is on `master`. From a local checkout, pass its path instead: `claude plugin marketplace add /path/to/streambreak`.
+From a local checkout, pass its path instead: `claude plugin marketplace add /path/to/streambreak`.
 
 **Use**
 
@@ -87,7 +87,7 @@ claude plugin validate mod/streambreak
 claude plugin test mod/streambreak
 ```
 
-Mod releases are tagged with `claude plugin tag mod/streambreak` (`streambreak--v<version>`). Never use a `v<version>` tag for the mod: that tag builds and publishes the streambreak desktop app.
+The mod is MIT licensed (`mod/streambreak/LICENSE`). Mod releases are tagged with `claude plugin tag mod/streambreak` (`streambreak--v<version>`). Never use a `v<version>` tag for the mod: that tag builds and publishes the streambreak desktop app.
 
 ## Development
 
